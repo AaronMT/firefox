@@ -12,6 +12,7 @@ import androidx.test.espresso.intent.rule.IntentsRule
 import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
+import org.mozilla.fenix.HomeActivity
 import org.mozilla.fenix.customannotations.SkipLeaks
 import org.mozilla.fenix.customannotations.SmokeTest
 import org.mozilla.fenix.helpers.AppAndSystemHelper.assertExternalAppOpens
@@ -23,6 +24,8 @@ import org.mozilla.fenix.helpers.Constants.PackageName.GOOGLE_APPS_PHOTOS
 import org.mozilla.fenix.helpers.Constants.PackageName.GOOGLE_DOCS
 import org.mozilla.fenix.helpers.FenixTestRule
 import org.mozilla.fenix.helpers.HomeActivityTestRule
+import org.mozilla.fenix.helpers.RetryTestRule
+import org.mozilla.fenix.helpers.RetryableComposeTestRule
 import org.mozilla.fenix.helpers.MatcherHelper.itemContainingText
 import org.mozilla.fenix.helpers.MatcherHelper.itemWithText
 import org.mozilla.fenix.helpers.TestAssetHelper.downloadPageAsset
@@ -48,6 +51,9 @@ import org.mozilla.fenix.ui.robots.notificationShade
  **/
 class DownloadTest {
     @get:Rule(order = 0)
+    val retryTestRule = RetryTestRule(3)
+
+    @get:Rule(order = 1)
     val fenixTestRule: FenixTestRule = FenixTestRule()
 
     private val mockWebServer get() = fenixTestRule.mockWebServer
@@ -58,16 +64,19 @@ class DownloadTest {
         "https://storage.googleapis.com/mobile_test_assets/test_app/downloads.html"
     private var downloadFile: String = ""
 
-    @get:Rule
-    val composeTestRule =
+    @get:Rule(order = 2)
+    val retryableComposeTestRule = RetryableComposeTestRule<HomeActivity, HomeActivityTestRule> {
         AndroidComposeTestRule(
             HomeActivityTestRule.withDefaultSettingsOverrides(),
         ) { it.activity }
+    }
+
+    private val composeTestRule get() = retryableComposeTestRule.current
 
     @get:Rule
     val intentsTestRule = IntentsRule()
 
-    @get:Rule
+    @get:Rule(order = 3)
     val memoryLeaksRule = DetectMemoryLeaksRule()
 
     // TestRail link: https://mozilla.testrail.io/index.php?/cases/view/243844

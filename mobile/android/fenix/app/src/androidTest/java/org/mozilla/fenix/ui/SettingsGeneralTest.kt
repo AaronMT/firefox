@@ -11,6 +11,7 @@ import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.mozilla.fenix.FenixApplication
+import org.mozilla.fenix.HomeActivity
 import org.mozilla.fenix.R
 import org.mozilla.fenix.customannotations.SmokeTest
 import org.mozilla.fenix.helpers.AppAndSystemHelper.registerAndCleanupIdlingResources
@@ -18,6 +19,8 @@ import org.mozilla.fenix.helpers.AppAndSystemHelper.runWithSystemLocaleChanged
 import org.mozilla.fenix.helpers.DataGenerationHelper.getStringResource
 import org.mozilla.fenix.helpers.FenixTestRule
 import org.mozilla.fenix.helpers.HomeActivityIntentTestRule
+import org.mozilla.fenix.helpers.RetryTestRule
+import org.mozilla.fenix.helpers.RetryableComposeTestRule
 import org.mozilla.fenix.helpers.RecyclerViewIdlingResource
 import org.mozilla.fenix.helpers.TestAssetHelper.loremIpsumAsset
 import org.mozilla.fenix.helpers.TestHelper.mDevice
@@ -37,17 +40,23 @@ import org.mozilla.fenix.ui.util.ROMANIAN_LANGUAGE_HEADER
  */
 class SettingsGeneralTest {
     @get:Rule(order = 0)
+    val retryTestRule = RetryTestRule(3)
+
+    @get:Rule(order = 1)
     val fenixTestRule: FenixTestRule = FenixTestRule()
 
     private val mockWebServer get() = fenixTestRule.mockWebServer
 
-    @get:Rule
-    val composeTestRule =
+    @get:Rule(order = 2)
+    val retryableComposeTestRule = RetryableComposeTestRule<HomeActivity, HomeActivityIntentTestRule> {
         AndroidComposeTestRule(
             HomeActivityIntentTestRule.withDefaultSettingsOverrides(),
         ) { it.activity }
+    }
 
-    @get:Rule
+    private val composeTestRule get() = retryableComposeTestRule.current
+
+    @get:Rule(order = 3)
     val memoryLeaksRule = DetectMemoryLeaksRule()
 
     // TestRail link: https://mozilla.testrail.io/index.php?/cases/view/2092697

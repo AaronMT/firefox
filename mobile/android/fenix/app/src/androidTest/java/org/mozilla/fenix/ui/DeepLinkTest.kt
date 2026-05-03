@@ -8,8 +8,11 @@ import androidx.compose.ui.test.junit4.AndroidComposeTestRule
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Rule
 import org.junit.Test
+import org.mozilla.fenix.HomeActivity
 import org.mozilla.fenix.helpers.FenixTestRule
 import org.mozilla.fenix.helpers.HomeActivityIntentTestRule
+import org.mozilla.fenix.helpers.RetryTestRule
+import org.mozilla.fenix.helpers.RetryableComposeTestRule
 import org.mozilla.fenix.helpers.perf.DetectMemoryLeaksRule
 import org.mozilla.fenix.ui.robots.DeepLinkRobot
 
@@ -28,20 +31,26 @@ import org.mozilla.fenix.ui.robots.DeepLinkRobot
 
 class DeepLinkTest {
     @get:Rule(order = 0)
+    val retryTestRule = RetryTestRule(3)
+
+    @get:Rule(order = 1)
     val fenixTestRule: FenixTestRule = FenixTestRule()
 
-    @get:Rule
-    val composeTestRule =
+    @get:Rule(order = 2)
+    val retryableComposeTestRule = RetryableComposeTestRule<HomeActivity, HomeActivityIntentTestRule> {
         AndroidComposeTestRule(
             HomeActivityIntentTestRule(
                 isMenuRedesignCFREnabled = false,
             ),
         ) { it.activity }
+    }
 
-    @get:Rule
+    private val composeTestRule get() = retryableComposeTestRule.current
+
+    @get:Rule(order = 3)
     val memoryLeaksRule = DetectMemoryLeaksRule()
 
-    private val robot = DeepLinkRobot(composeTestRule)
+    private val robot get() = DeepLinkRobot(composeTestRule)
 
     @Test
     fun openHomeScreen() {

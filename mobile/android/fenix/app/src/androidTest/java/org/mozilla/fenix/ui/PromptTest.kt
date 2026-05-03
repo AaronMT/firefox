@@ -4,9 +4,12 @@ import androidx.compose.ui.test.junit4.AndroidComposeTestRule
 import androidx.test.espresso.Espresso.closeSoftKeyboard
 import org.junit.Rule
 import org.junit.Test
+import org.mozilla.fenix.HomeActivity
 import org.mozilla.fenix.helpers.DataGenerationHelper.getStringResource
 import org.mozilla.fenix.helpers.FenixTestRule
 import org.mozilla.fenix.helpers.HomeActivityTestRule
+import org.mozilla.fenix.helpers.RetryTestRule
+import org.mozilla.fenix.helpers.RetryableComposeTestRule
 import org.mozilla.fenix.helpers.MatcherHelper
 import org.mozilla.fenix.helpers.MatcherHelper.itemContainingText
 import org.mozilla.fenix.helpers.TestAssetHelper.getGenericAsset
@@ -26,17 +29,23 @@ import mozilla.components.feature.prompts.R as promptsR
 
 class PromptTest {
     @get:Rule(order = 0)
+    val retryTestRule = RetryTestRule(3)
+
+    @get:Rule(order = 1)
     val fenixTestRule: FenixTestRule = FenixTestRule()
 
     private val mockWebServer get() = fenixTestRule.mockWebServer
 
-    @get:Rule
-    val composeTestRule =
+    @get:Rule(order = 2)
+    val retryableComposeTestRule = RetryableComposeTestRule<HomeActivity, HomeActivityTestRule> {
         AndroidComposeTestRule(
             HomeActivityTestRule.withDefaultSettingsOverrides(),
         ) { it.activity }
+    }
 
-    @get:Rule
+    private val composeTestRule get() = retryableComposeTestRule.current
+
+    @get:Rule(order = 3)
     val memoryLeaksRule = DetectMemoryLeaksRule()
 
     @Test

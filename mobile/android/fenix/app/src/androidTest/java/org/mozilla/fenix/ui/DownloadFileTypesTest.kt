@@ -11,10 +11,13 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
+import org.mozilla.fenix.HomeActivity
 import org.mozilla.fenix.customannotations.SmokeTest
 import org.mozilla.fenix.helpers.FenixTestRule
 import org.mozilla.fenix.helpers.HomeActivityIntentTestRule
 import org.mozilla.fenix.helpers.HomeActivityTestRule
+import org.mozilla.fenix.helpers.RetryTestRule
+import org.mozilla.fenix.helpers.RetryableComposeTestRule
 import org.mozilla.fenix.ui.robots.browserScreen
 import org.mozilla.fenix.ui.robots.downloadRobot
 
@@ -28,16 +31,22 @@ import org.mozilla.fenix.ui.robots.downloadRobot
 class DownloadFileTypesTest(fileName: String) {
     // Remote test page managed by Mozilla Mobile QA team at https://github.com/mozilla-mobile/testapp
     @get:Rule(order = 0)
+    val retryTestRule = RetryTestRule(3)
+
+    @get:Rule(order = 1)
     val fenixTestRule: FenixTestRule = FenixTestRule()
 
     private val downloadTestPage = "https://storage.googleapis.com/mobile_test_assets/test_app/downloads.html"
     private var downloadFile: String = fileName
 
-    @get:Rule
-    val composeTestRule =
+    @get:Rule(order = 2)
+    val retryableComposeTestRule = RetryableComposeTestRule<HomeActivity, HomeActivityIntentTestRule> {
         AndroidComposeTestRule(
             HomeActivityIntentTestRule.withDefaultSettingsOverrides(),
         ) { it.activity }
+    }
+
+    private val composeTestRule get() = retryableComposeTestRule.current
 
     companion object {
         // Creating test data. The test will take each file name as a parameter and run it individually.

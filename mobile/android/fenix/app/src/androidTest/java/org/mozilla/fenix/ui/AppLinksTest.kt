@@ -14,10 +14,13 @@ import androidx.test.espresso.intent.matcher.IntentMatchers.hasDataString
 import org.hamcrest.Matchers.equalTo
 import org.junit.Rule
 import org.junit.Test
+import org.mozilla.fenix.HomeActivity
 import org.mozilla.fenix.helpers.AppAndSystemHelper.assertNativeAppOpens
 import org.mozilla.fenix.helpers.Constants
 import org.mozilla.fenix.helpers.FenixTestRule
 import org.mozilla.fenix.helpers.HomeActivityIntentTestRule
+import org.mozilla.fenix.helpers.RetryTestRule
+import org.mozilla.fenix.helpers.RetryableComposeTestRule
 import org.mozilla.fenix.helpers.MatcherHelper.itemContainingText
 import org.mozilla.fenix.helpers.MatcherHelper.itemWithText
 import org.mozilla.fenix.helpers.OpenLinksInApp
@@ -41,17 +44,23 @@ class AppLinksTest {
     private val phoneSchemaLink = "tel://1234567890"
 
     @get:Rule(order = 0)
+    val retryTestRule = RetryTestRule(3)
+
+    @get:Rule(order = 1)
     val fenixTestRule: FenixTestRule = FenixTestRule()
 
     private val mockWebServer get() = fenixTestRule.mockWebServer
 
-    @get:Rule
-    val composeTestRule =
+    @get:Rule(order = 2)
+    val retryableComposeTestRule = RetryableComposeTestRule<HomeActivity, HomeActivityIntentTestRule> {
         AndroidComposeTestRule(
             HomeActivityIntentTestRule(openLinksInExternalApp = OpenLinksInApp.ASK),
         ) { it.activity }
+    }
 
-    @get:Rule
+    private val composeTestRule get() = retryableComposeTestRule.current
+
+    @get:Rule(order = 3)
     val memoryLeaksRule = DetectMemoryLeaksRule()
 
     /**

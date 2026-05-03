@@ -10,12 +10,15 @@ import androidx.test.filters.SdkSuppress
 import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
+import org.mozilla.fenix.HomeActivity
 import org.mozilla.fenix.customannotations.SkipLeaks
 import org.mozilla.fenix.customannotations.SmokeTest
 import org.mozilla.fenix.helpers.AppAndSystemHelper.runWithAppLocaleChanged
 import org.mozilla.fenix.helpers.DataGenerationHelper.setTextToClipBoard
 import org.mozilla.fenix.helpers.FenixTestRule
 import org.mozilla.fenix.helpers.HomeActivityIntentTestRule
+import org.mozilla.fenix.helpers.RetryTestRule
+import org.mozilla.fenix.helpers.RetryableComposeTestRule
 import org.mozilla.fenix.helpers.MockBrowserDataHelper.addCustomSearchEngine
 import org.mozilla.fenix.helpers.MockBrowserDataHelper.createBookmarkItem
 import org.mozilla.fenix.helpers.MockBrowserDataHelper.createHistoryItem
@@ -35,6 +38,9 @@ import java.util.Locale
 
 class SettingsSearchTest {
     @get:Rule(order = 0)
+    val retryTestRule = RetryTestRule(3)
+
+    @get:Rule(order = 1)
     val fenixTestRule: FenixTestRule = FenixTestRule()
 
     private val mockWebServer get() = fenixTestRule.mockWebServer
@@ -46,12 +52,16 @@ class SettingsSearchTest {
             "Google",
         )
 
-    @get:Rule
-    val composeTestRule = AndroidComposeTestRule(
-        HomeActivityIntentTestRule.withDefaultSettingsOverrides(),
-    ) { it.activity }
+    @get:Rule(order = 2)
+    val retryableComposeTestRule = RetryableComposeTestRule<HomeActivity, HomeActivityIntentTestRule> {
+        AndroidComposeTestRule(
+            HomeActivityIntentTestRule.withDefaultSettingsOverrides(),
+        ) { it.activity }
+    }
 
-    @get:Rule
+    private val composeTestRule get() = retryableComposeTestRule.current
+
+    @get:Rule(order = 3)
     val memoryLeaksRule = DetectMemoryLeaksRule()
 
     @get:Rule

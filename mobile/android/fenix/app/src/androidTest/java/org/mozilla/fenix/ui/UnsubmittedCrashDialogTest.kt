@@ -21,6 +21,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.mozilla.fenix.HomeActivity
 import org.mozilla.fenix.R
 import org.mozilla.fenix.components.appstate.AppAction
 import org.mozilla.fenix.crashes.CrashActionDispatcher
@@ -30,6 +31,8 @@ import org.mozilla.fenix.ext.settings
 import org.mozilla.fenix.helpers.DataGenerationHelper.getStringResource
 import org.mozilla.fenix.helpers.FenixTestRule
 import org.mozilla.fenix.helpers.HomeActivityTestRule
+import org.mozilla.fenix.helpers.RetryTestRule
+import org.mozilla.fenix.helpers.RetryableComposeTestRule
 import org.mozilla.fenix.helpers.MatcherHelper
 import org.mozilla.fenix.helpers.MatcherHelper.itemContainingText
 import org.mozilla.fenix.helpers.TestHelper
@@ -39,6 +42,9 @@ class UnsubmittedCrashDialogTest {
     private lateinit var fakeContext: Context
 
     @get:Rule(order = 0)
+    val retryTestRule = RetryTestRule(3)
+
+    @get:Rule(order = 1)
     val fenixTestRule: FenixTestRule = FenixTestRule()
 
     @Before
@@ -49,11 +55,14 @@ class UnsubmittedCrashDialogTest {
         every { fakeContext.startActivity(any()) } returns mockk()
     }
 
-    @get:Rule
-    val composeTestRule =
+    @get:Rule(order = 2)
+    val retryableComposeTestRule = RetryableComposeTestRule<HomeActivity, HomeActivityTestRule> {
         AndroidComposeTestRule(
             HomeActivityTestRule.withDefaultSettingsOverrides(useNewCrashReporterFlow = true),
         ) { it.activity }
+    }
+
+    private val composeTestRule get() = retryableComposeTestRule.current
 
     private fun addCrashToStore(action: CrashAction) {
         composeTestRule.activityRule.activity.applicationContext.components.appStore.dispatch(AppAction.CrashActionWrapper(action))

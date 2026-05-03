@@ -12,6 +12,7 @@ import androidx.test.rule.ActivityTestRule
 import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
+import org.mozilla.fenix.HomeActivity
 import org.mozilla.fenix.IntentReceiverActivity
 import org.mozilla.fenix.customannotations.SkipLeaks
 import org.mozilla.fenix.customannotations.SmokeTest
@@ -19,6 +20,8 @@ import org.mozilla.fenix.helpers.AppAndSystemHelper.openAppFromExternalLink
 import org.mozilla.fenix.helpers.DataGenerationHelper.createCustomTabIntent
 import org.mozilla.fenix.helpers.FenixTestRule
 import org.mozilla.fenix.helpers.HomeActivityIntentTestRule
+import org.mozilla.fenix.helpers.RetryTestRule
+import org.mozilla.fenix.helpers.RetryableComposeTestRule
 import org.mozilla.fenix.helpers.MatcherHelper.itemContainingText
 import org.mozilla.fenix.helpers.MatcherHelper.itemWithText
 import org.mozilla.fenix.helpers.TestAssetHelper.getGenericAsset
@@ -36,6 +39,9 @@ import org.mozilla.fenix.ui.robots.notificationShade
 
 class CustomTabsTest {
     @get:Rule(order = 0)
+    val retryTestRule = RetryTestRule(3)
+
+    @get:Rule(order = 1)
     val fenixTestRule: FenixTestRule = FenixTestRule()
 
     private val mockWebServer get() = fenixTestRule.mockWebServer
@@ -49,11 +55,14 @@ class CustomTabsTest {
     private val externalLinksPWAPage = "https://mozilla-mobile.github.io/testapp/v2.0/externalLinks.html"
     private val loginPage = "https://mozilla-mobile.github.io/testapp/loginForm"
 
-    @get:Rule
-    val composeTestRule =
+    @get:Rule(order = 2)
+    val retryableComposeTestRule = RetryableComposeTestRule<HomeActivity, HomeActivityIntentTestRule> {
         AndroidComposeTestRule(
             HomeActivityIntentTestRule.withDefaultSettingsOverrides(),
         ) { it.activity }
+    }
+
+    private val composeTestRule get() = retryableComposeTestRule.current
 
     @get:Rule
     val intentReceiverActivityTestRule = ActivityTestRule(
@@ -62,7 +71,7 @@ class CustomTabsTest {
         false,
     )
 
-    @get:Rule
+    @get:Rule(order = 3)
     val memoryLeaksRule = DetectMemoryLeaksRule()
 
     // TestRail link: https://mozilla.testrail.io/index.php?/cases/view/249659

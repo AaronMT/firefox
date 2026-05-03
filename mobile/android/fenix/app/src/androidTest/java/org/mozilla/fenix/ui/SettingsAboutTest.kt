@@ -9,11 +9,14 @@ import androidx.test.uiautomator.UiSelector
 import org.junit.Rule
 import org.junit.Test
 import org.mozilla.fenix.Config
+import org.mozilla.fenix.HomeActivity
 import org.mozilla.fenix.customannotations.SkipLeaks
 import org.mozilla.fenix.helpers.AppAndSystemHelper.runWithCondition
 import org.mozilla.fenix.helpers.FenixTestRule
 import org.mozilla.fenix.helpers.HomeActivityIntentTestRule
 import org.mozilla.fenix.helpers.HomeActivityTestRule
+import org.mozilla.fenix.helpers.RetryTestRule
+import org.mozilla.fenix.helpers.RetryableComposeTestRule
 import org.mozilla.fenix.helpers.TestHelper.mDevice
 import org.mozilla.fenix.helpers.TestHelper.waitForAppWindowToBeUpdated
 import org.mozilla.fenix.helpers.perf.DetectMemoryLeaksRule
@@ -27,15 +30,21 @@ import org.mozilla.fenix.ui.robots.homeScreen
 
 class SettingsAboutTest {
     @get:Rule(order = 0)
+    val retryTestRule = RetryTestRule(3)
+
+    @get:Rule(order = 1)
     val fenixTestRule: FenixTestRule = FenixTestRule()
 
-    @get:Rule
-    val composeTestRule =
+    @get:Rule(order = 2)
+    val retryableComposeTestRule = RetryableComposeTestRule<HomeActivity, HomeActivityIntentTestRule> {
         AndroidComposeTestRule(
             HomeActivityIntentTestRule.withDefaultSettingsOverrides(),
         ) { it.activity }
+    }
 
-    @get:Rule
+    private val composeTestRule get() = retryableComposeTestRule.current
+
+    @get:Rule(order = 3)
     val memoryLeaksRule = DetectMemoryLeaksRule()
 
     // Walks through the About settings menu to ensure all items are present

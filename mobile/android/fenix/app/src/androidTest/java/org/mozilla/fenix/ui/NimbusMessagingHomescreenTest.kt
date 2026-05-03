@@ -16,9 +16,11 @@ import org.junit.Rule
 import org.junit.Test
 import org.mozilla.experiments.nimbus.Res
 import org.mozilla.fenix.FenixApplication
+import org.mozilla.fenix.HomeActivity
 import org.mozilla.fenix.helpers.FenixTestRule
 import org.mozilla.fenix.helpers.HomeActivityIntentTestRule
 import org.mozilla.fenix.helpers.RetryTestRule
+import org.mozilla.fenix.helpers.RetryableComposeTestRule
 import org.mozilla.fenix.nimbus.FxNimbus
 import org.mozilla.fenix.nimbus.HomeScreenSection
 import org.mozilla.fenix.nimbus.Homescreen
@@ -35,6 +37,9 @@ class NimbusMessagingHomescreenTest {
     private var messageTitle = "A Nimbus title"
 
     @get:Rule(order = 0)
+    val retryTestRule = RetryTestRule(3)
+
+    @get:Rule(order = 1)
     val fenixTestRule: FenixTestRule = FenixTestRule()
 
     @get:Rule
@@ -46,12 +51,12 @@ class NimbusMessagingHomescreenTest {
         },
     )
 
-    @Rule
-    @JvmField
-    val retryTestRule = RetryTestRule(3)
-
-    val composeTestRule =
+    @get:Rule(order = 2)
+    val retryableComposeTestRule = RetryableComposeTestRule<HomeActivity, HomeActivityIntentTestRule> {
         AndroidComposeTestRule(HomeActivityIntentTestRule.withDefaultSettingsOverrides()) { it.activity }
+    }
+
+    private val composeTestRule get() = retryableComposeTestRule.current
 
     @Before
     fun setUp() {

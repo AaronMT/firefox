@@ -16,6 +16,7 @@ import org.junit.Assume
 import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
+import org.mozilla.fenix.HomeActivity
 import org.mozilla.fenix.R
 import org.mozilla.fenix.customannotations.SkipLeaks
 import org.mozilla.fenix.customannotations.SmokeTest
@@ -29,6 +30,8 @@ import org.mozilla.fenix.helpers.Constants
 import org.mozilla.fenix.helpers.DataGenerationHelper.getStringResource
 import org.mozilla.fenix.helpers.FenixTestRule
 import org.mozilla.fenix.helpers.HomeActivityTestRule
+import org.mozilla.fenix.helpers.RetryTestRule
+import org.mozilla.fenix.helpers.RetryableComposeTestRule
 import org.mozilla.fenix.helpers.MatcherHelper
 import org.mozilla.fenix.helpers.MockBrowserDataHelper
 import org.mozilla.fenix.helpers.MockBrowserDataHelper.createBookmarkItem
@@ -72,23 +75,30 @@ class SearchTest {
     private val firefoxSuggestHeader = getStringResource(R.string.firefox_suggest_header)
 
     @get:Rule(order = 0)
+    val retryTestRule = RetryTestRule(3)
+
+    @get:Rule(order = 1)
     val fenixTestRule: FenixTestRule = FenixTestRule()
 
-    @get:Rule
-    val composeTestRule = AndroidComposeTestRule(
-        HomeActivityTestRule(
-            skipOnboarding = true,
-            isPocketEnabled = false,
-            isRecentTabsFeatureEnabled = false,
-            isWallpaperOnboardingEnabled = false,
-            isLocationPermissionEnabled = SitePermissionsRules.Action.BLOCKED,
-            // workaround for toolbar at top position by default
-            // remove with https://bugzilla.mozilla.org/show_bug.cgi?id=1917640
-            shouldUseBottomToolbar = true,
-        ),
-    ) { it.activity }
+    @get:Rule(order = 2)
+    val retryableComposeTestRule = RetryableComposeTestRule<HomeActivity, HomeActivityTestRule> {
+        AndroidComposeTestRule(
+            HomeActivityTestRule(
+                skipOnboarding = true,
+                isPocketEnabled = false,
+                isRecentTabsFeatureEnabled = false,
+                isWallpaperOnboardingEnabled = false,
+                isLocationPermissionEnabled = SitePermissionsRules.Action.BLOCKED,
+                // workaround for toolbar at top position by default
+                // remove with https://bugzilla.mozilla.org/show_bug.cgi?id=1917640
+                shouldUseBottomToolbar = true,
+            ),
+        ) { it.activity }
+    }
 
-    @get:Rule
+    private val composeTestRule get() = retryableComposeTestRule.current
+
+    @get:Rule(order = 3)
     val memoryLeaksRule = DetectMemoryLeaksRule()
 
     @get:Rule

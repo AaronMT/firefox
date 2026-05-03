@@ -8,12 +8,15 @@ import androidx.compose.ui.test.junit4.AndroidComposeTestRule
 import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
+import org.mozilla.fenix.HomeActivity
 import org.mozilla.fenix.customannotations.SmokeTest
 import org.mozilla.fenix.ext.settings
 import org.mozilla.fenix.helpers.AppAndSystemHelper.runWithCondition
 import org.mozilla.fenix.helpers.DataGenerationHelper.getSponsoredFxSuggestPlaceHolder
 import org.mozilla.fenix.helpers.FenixTestRule
 import org.mozilla.fenix.helpers.HomeActivityTestRule
+import org.mozilla.fenix.helpers.RetryTestRule
+import org.mozilla.fenix.helpers.RetryableComposeTestRule
 import org.mozilla.fenix.helpers.TestHelper
 import org.mozilla.fenix.helpers.perf.DetectMemoryLeaksRule
 import org.mozilla.fenix.ui.robots.homeScreen
@@ -26,19 +29,26 @@ import org.mozilla.fenix.ui.robots.navigationToolbar
 
 class FirefoxSuggestTest {
     @get:Rule(order = 0)
+    val retryTestRule = RetryTestRule(3)
+
+    @get:Rule(order = 1)
     val fenixTestRule: FenixTestRule = FenixTestRule()
 
-    @get:Rule
-    val composeTestRule = AndroidComposeTestRule(
-        HomeActivityTestRule(
-            skipOnboarding = true,
-            isPocketEnabled = false,
-            isRecentTabsFeatureEnabled = false,
-            isWallpaperOnboardingEnabled = false,
-        ),
-    ) { it.activity }
+    @get:Rule(order = 2)
+    val retryableComposeTestRule = RetryableComposeTestRule<HomeActivity, HomeActivityTestRule> {
+        AndroidComposeTestRule(
+            HomeActivityTestRule(
+                skipOnboarding = true,
+                isPocketEnabled = false,
+                isRecentTabsFeatureEnabled = false,
+                isWallpaperOnboardingEnabled = false,
+            ),
+        ) { it.activity }
+    }
 
-    @get:Rule
+    private val composeTestRule get() = retryableComposeTestRule.current
+
+    @get:Rule(order = 3)
     val memoryLeaksRule = DetectMemoryLeaksRule()
 
     private val sponsoredKeyWords: Map<String, List<String>> =

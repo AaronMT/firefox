@@ -8,12 +8,15 @@ import androidx.compose.ui.test.junit4.AndroidComposeTestRule
 import androidx.test.espresso.Espresso.closeSoftKeyboard
 import org.junit.Rule
 import org.junit.Test
+import org.mozilla.fenix.HomeActivity
 import org.mozilla.fenix.customannotations.SkipLeaks
 import org.mozilla.fenix.customannotations.SmokeTest
 import org.mozilla.fenix.helpers.AppAndSystemHelper.bringAppToForeground
 import org.mozilla.fenix.helpers.AppAndSystemHelper.putAppToBackground
 import org.mozilla.fenix.helpers.FenixTestRule
 import org.mozilla.fenix.helpers.HomeActivityIntentTestRule
+import org.mozilla.fenix.helpers.RetryTestRule
+import org.mozilla.fenix.helpers.RetryableComposeTestRule
 import org.mozilla.fenix.helpers.MatcherHelper.itemWithResId
 import org.mozilla.fenix.helpers.MatcherHelper.itemWithResIdContainingText
 import org.mozilla.fenix.helpers.TestAssetHelper.creditCardFormAsset
@@ -37,6 +40,9 @@ class CreditCardAutofillTest {
     }
 
     @get:Rule(order = 0)
+    val retryTestRule = RetryTestRule(3)
+
+    @get:Rule(order = 1)
     val fenixTestRule: FenixTestRule = FenixTestRule()
 
     private val mockWebServer get() = fenixTestRule.mockWebServer
@@ -50,13 +56,16 @@ class CreditCardAutofillTest {
         val MOCK_EXPIRATION_MONTH_AND_YEAR = "03/${(LocalDate.now().year + 2)}"
     }
 
-    @get:Rule
-    val composeTestRule =
+    @get:Rule(order = 2)
+    val retryableComposeTestRule = RetryableComposeTestRule<HomeActivity, HomeActivityIntentTestRule> {
         AndroidComposeTestRule(
             HomeActivityIntentTestRule.withDefaultSettingsOverrides(),
         ) { it.activity }
+    }
 
-    @get:Rule
+    private val composeTestRule get() = retryableComposeTestRule.current
+
+    @get:Rule(order = 3)
     val memoryLeaksRule = DetectMemoryLeaksRule()
 
     // TestRail link: https://mozilla.testrail.io/index.php?/cases/view/1512792

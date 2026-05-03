@@ -7,10 +7,13 @@ package org.mozilla.fenix.ui
 import androidx.compose.ui.test.junit4.AndroidComposeTestRule
 import org.junit.Rule
 import org.junit.Test
+import org.mozilla.fenix.HomeActivity
 import org.mozilla.fenix.helpers.AppAndSystemHelper.assertNativeAppOpens
 import org.mozilla.fenix.helpers.Constants
 import org.mozilla.fenix.helpers.FenixTestRule
 import org.mozilla.fenix.helpers.HomeActivityTestRule
+import org.mozilla.fenix.helpers.RetryTestRule
+import org.mozilla.fenix.helpers.RetryableComposeTestRule
 import org.mozilla.fenix.helpers.MatcherHelper.itemContainingText
 import org.mozilla.fenix.helpers.MatcherHelper.itemWithDescription
 import org.mozilla.fenix.helpers.MatcherHelper.itemWithResId
@@ -30,6 +33,9 @@ import java.time.LocalDate
 
 class WebControlsTest {
     @get:Rule(order = 0)
+    val retryTestRule = RetryTestRule(3)
+
+    @get:Rule(order = 1)
     val fenixTestRule: FenixTestRule = FenixTestRule()
 
     private val mockWebServer get() = fenixTestRule.mockWebServer
@@ -40,15 +46,19 @@ class WebControlsTest {
     private val emailLink = "mailto://example@example.com"
     private val phoneLink = "tel://1234567890"
 
-    @get:Rule
-    val composeTestRule = AndroidComposeTestRule(
-        HomeActivityTestRule(
-        shouldUseBottomToolbar = true,
-        isOpenInAppBannerEnabled = false,
-        ),
-    ) { it.activity }
+    @get:Rule(order = 2)
+    val retryableComposeTestRule = RetryableComposeTestRule<HomeActivity, HomeActivityTestRule> {
+        AndroidComposeTestRule(
+            HomeActivityTestRule(
+            shouldUseBottomToolbar = true,
+            isOpenInAppBannerEnabled = false,
+            ),
+        ) { it.activity }
+    }
 
-    @get:Rule
+    private val composeTestRule get() = retryableComposeTestRule.current
+
+    @get:Rule(order = 3)
     val memoryLeaksRule = DetectMemoryLeaksRule()
 
     // TestRail link: https://mozilla.testrail.io/index.php?/cases/view/2316067

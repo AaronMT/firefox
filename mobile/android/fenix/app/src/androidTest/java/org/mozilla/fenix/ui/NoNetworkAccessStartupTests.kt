@@ -10,10 +10,13 @@ import androidx.test.filters.SdkSuppress
 import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
+import org.mozilla.fenix.HomeActivity
 import org.mozilla.fenix.customannotations.SmokeTest
 import org.mozilla.fenix.helpers.AppAndSystemHelper.setNetworkEnabled
 import org.mozilla.fenix.helpers.FenixTestRule
 import org.mozilla.fenix.helpers.HomeActivityTestRule
+import org.mozilla.fenix.helpers.RetryTestRule
+import org.mozilla.fenix.helpers.RetryableComposeTestRule
 import org.mozilla.fenix.ui.robots.browserScreen
 import org.mozilla.fenix.ui.robots.homeScreen
 import org.mozilla.fenix.ui.robots.navigationToolbar
@@ -25,13 +28,19 @@ import org.mozilla.fenix.ui.robots.navigationToolbar
 
 class NoNetworkAccessStartupTests {
     @get:Rule(order = 0)
+    val retryTestRule = RetryTestRule(3)
+
+    @get:Rule(order = 1)
     val fenixTestRule: FenixTestRule = FenixTestRule()
 
-    @get:Rule
-    val composeTestRule =
+    @get:Rule(order = 2)
+    val retryableComposeTestRule = RetryableComposeTestRule<HomeActivity, HomeActivityTestRule> {
         AndroidComposeTestRule(
             HomeActivityTestRule.withDefaultSettingsOverrides(launchActivity = false),
         ) { it.activity }
+    }
+
+    private val composeTestRule get() = retryableComposeTestRule.current
 
     // Test running on beta/release builds in CI:
     // caution when making changes to it, so they don't block the builds
