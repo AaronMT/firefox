@@ -151,10 +151,7 @@ def fetch_artifacts(root_gcs_path, device, artifact_pattern):
         elif "network error" in output.lower():
             logging.error(f"Network error accessing GCS path: {gcs_path}")
         elif "CommandException: One or more URLs matched no objects" in output:
-            logging.info(
-                f"No crash log files found in GCS for device: {device} "
-                "(device failure may be non-crash related)"
-            )
+            logging.info(f"No files found in GCS at {gcs_path}")
         else:
             logging.error(f"Failed to list files at {gcs_path}: {output}")
         return []
