@@ -65,6 +65,7 @@ class HomeActivityTestRule(
         isPageLoadTranslationsPromptEnabled: Boolean = false,
         isMicrosurveyEnabled: Boolean = settings.microsurveyFeatureEnabled,
         shouldUseBottomToolbar: Boolean = settings.shouldUseBottomToolbar,
+        onboardingFeatureEnabled: Boolean = settings.onboardingFeatureEnabled,
         isUseNewCrashReporterFlow: Boolean = false,
         isTabSwipeCFREnabled: Boolean = false,
         isTermsOfServiceAccepted: Boolean = true,
@@ -87,6 +88,7 @@ class HomeActivityTestRule(
         this.enableOrDisablePageLoadTranslationsPrompt(isPageLoadTranslationsPromptEnabled)
         this.isMicrosurveyEnabled = isMicrosurveyEnabled
         this.shouldUseBottomToolbar = shouldUseBottomToolbar
+        this.onboardingFeatureEnabled = onboardingFeatureEnabled
         this.isUseNewCrashReporterFlow = isUseNewCrashReporterFlow
         this.isTabSwipeCFREnabled = isTabSwipeCFREnabled
         this.isTermsOfServiceAccepted = isTermsOfServiceAccepted
@@ -152,6 +154,7 @@ class HomeActivityTestRule(
             // workaround for toolbar at top position by default
             // remove with https://bugzilla.mozilla.org/show_bug.cgi?id=1917640
             shouldUseBottomToolbar = true,
+            onboardingFeatureEnabled = false,
             isPageLoadTranslationsPromptEnabled = false,
             isUseNewCrashReporterFlow = useNewCrashReporterFlow,
             isTabSwipeCFREnabled = true,
@@ -329,6 +332,7 @@ class HomeActivityIntentTestRule internal constructor(
             // workaround for toolbar at top position by default
             // remove with https://bugzilla.mozilla.org/show_bug.cgi?id=1917640
             shouldUseBottomToolbar = true,
+            onboardingFeatureEnabled = false,
             isPageLoadTranslationsPromptEnabled = false,
             isTabSwipeCFREnabled = true,
             hasSeenShakeToSummarizeToolbarCfr = true,
