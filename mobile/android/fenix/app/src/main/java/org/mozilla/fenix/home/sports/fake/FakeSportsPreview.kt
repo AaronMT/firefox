@@ -248,6 +248,37 @@ internal enum class FakeMatchCardScenario(val label: String) {
         )
     },
 
+    RoundOf32("Round of 32") {
+        override fun build() = listOf(
+            MatchCard(
+                matches = listOf(
+                    FakeSportsPreview.match(
+                        home = FakeSportsPreview.usa,
+                        away = FakeSportsPreview.par,
+                        date = "Jun 29",
+                        time = "3:00 PM",
+                        matchStatus = MatchStatus.Scheduled,
+                    ),
+                ),
+                round = TournamentRound.ROUND_OF_32,
+                relatedMatches = listOf(
+                    FakeSportsPreview.match(
+                        home = FakeSportsPreview.aus,
+                        away = FakeSportsPreview.tur,
+                        date = "Jun 29",
+                        time = "6:00 PM",
+                    ),
+                    FakeSportsPreview.match(
+                        home = FakeSportsPreview.can,
+                        away = FakeSportsPreview.par,
+                        date = "Jun 30",
+                        time = "3:00 PM",
+                    ),
+                ),
+            ),
+        )
+    },
+
     TBD("Null teams") {
         override fun build() = listOf(
             MatchCard(
