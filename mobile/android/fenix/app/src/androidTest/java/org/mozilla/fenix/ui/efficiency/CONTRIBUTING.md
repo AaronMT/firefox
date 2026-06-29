@@ -72,13 +72,11 @@ If you add a method to a page object, it should be useful to any test touching t
 
 Define selectors once in the appropriate `selectors/*Selectors.kt` file. Assign meaningful groups. Don't create one-off selectors inline in tests.
 
-### Avoid single-use helpers
+## Primitives and test steps
 
-Don't create `verifyBookmarkAppears()` that wraps a single `mozVerify` call. The primitive *is* the API -- use it directly.
+### The primitives
 
-## Use the primitives
-
-The framework provides a complete set of interaction primitives. Compose tests from these:
+The framework provides a complete set of interaction primitives (custom commands). These map to the `[CMD]` level in structured logging:
 
 | Primitive | Purpose |
 |-----------|---------|
@@ -94,13 +92,43 @@ The framework provides a complete set of interaction primitives. Compose tests f
 | `mozVerifyElementAbsent(selector)` | Verify element is not displayed |
 | `navigateToPage()` | Navigate via the navigation graph |
 
+### When to wrap primitives into a page object method (test step)
+
+Page object methods are test steps -- they map to the `[STEP]` level in structured logging and should read like steps in a TestRail test case. The structured log hierarchy is:
+
+- `[STEP]` -- a recognizable user action (page object method, e.g., `openMainMenu`)
+- `[CMD]` -- a framework primitive (e.g., `mozClick`)
+- `[LOC]` -- element lookup/wait
+- `[SEL]` -- the selector string argument
+
+**Wrap primitives into a test step when:**
+- The method name maps to a recognizable action that would appear as a step in a TestRail case (e.g., `openMainMenu`, `openItemMenu`, `saveEditBookmark`)
+- A failure at the `[STEP]` level in the log would immediately tell you *what user action failed* without reading the underlying `[CMD]`s
+- The grouping represents a logical user action, even if it's a single primitive today -- it may gain logging, preconditions, or additional steps later
+
+**Don't wrap when:**
+- The wrapper name doesn't add clarity beyond what the primitive + selector already says (e.g., `verifyBookmarkTitle(title)` vs `mozVerify(BookmarksSelectors.BOOKMARK_ITEM(title))` -- these read identically)
+- You're wrapping just to avoid typing the selector object name
+- The wrapper creates a new framework-level abstraction (e.g., `interactAndWait()`, `clickAndNavigate()`) -- that belongs in BasePage if anywhere
+
+The question isn't "how many primitives does it wrap?" but "does the method name create a meaningful `[STEP]` in the log that aids TestRail mapping and root cause analysis?"
+
+### Why this matters: bidirectional test case maintenance
+
+The structured logging is designed to be a source-of-truth execution trace that mirrors TestRail test cases. When test steps, custom commands, locators, and selectors are well-named:
+- TestRail cases can be used to write tests by interfacing with test factories
+- Test factory structured logging can be used to write or update TestRail cases
+- AI can generate test scaffolding from selectors, navigation nodes, and page object test steps
+
+This bidirectional flow only works when each layer (`[STEP]`/`[CMD]`/`[LOC]`/`[SEL]`) is meaningful and reads the same way a test case would read.
+
+### Root cause analysis test
+
+When deciding whether to create a test step, ask: "What happens when this fails? Will the `[STEP]` name in the log make it obvious *what user action broke* with close to zero processing effort?" If the step name isolates the issue (state, preconditions, helper malfunction) at a glance, it's a good test step.
+
 ### Do not extend BasePage
 
-Don't add new primitives to `BasePage.kt` unless you've identified a genuinely missing *category* of interaction that multiple pages need. The bar is high.
-
-### Don't wrap primitives
-
-No `clickAndWaitForBookmarks()` -- that's `mozClick` + `navigateToPage`. No `interactAndWait()` -- that's a primitive trying to be a framework.
+Don't add new primitives to `BasePage.kt` unless you've identified a genuinely missing *category* of interaction that multiple pages need. The bar is high. Primitives are `[CMD]`-level operations; test steps are `[STEP]`-level and belong in page objects.
 
 ### Custom commands over custom waits
 
@@ -167,10 +195,10 @@ These should be flagged in code review:
 | New methods on BasePage | Framework bloat | Use existing primitives |
 | Inline selectors in test files | Not reusable | Add to selectors file with groups |
 | `Thread.sleep()` or custom polling | Brittle, flaky | Use `requiredForPage` or existing waits |
-| Test-specific page object methods | Not reusable | Use primitives directly in the test |
+| Wrappers that don't add log clarity | Name doesn't aid root cause analysis | Use the primitive + selector directly |
 | UI setup when config is available | Slower, flakier | Use constructor flags or pre-seeded data |
 | Journey tests without foundational coverage | Premature | Write presence/interaction tests first |
-| Wrapping a single primitive call | Unnecessary abstraction | Call the primitive directly |
+| Framework-level abstractions in page objects | Belongs in BasePage if anywhere | Keep page object methods as test steps, not new primitives |
 
 ## Before you write: checklist
 
@@ -178,8 +206,8 @@ These should be flagged in code review:
 2. What is the single assertion that captures why this test exists?
 3. Can the setup be pushed to constructor flags or pre-runner state?
 4. Do the selectors I need already exist? Are they in the right groups?
-5. Do the page object methods I need already exist?
-6. Am I reusing primitives, or inventing new ones?
+5. Do the page object methods (test steps) I need already exist?
+6. For any new test step: does the method name create a meaningful `[STEP]` in the log? Would a failure at that level immediately tell you what broke?
 7. If I removed all the navigation, does the test body still make sense as a spec?
 
 ## Adding a new page
