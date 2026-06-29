@@ -74,9 +74,9 @@ Define selectors once in the appropriate `selectors/*Selectors.kt` file. Assign 
 
 ## Primitives and test steps
 
-### The primitives
+### Use the existing primitives
 
-The framework provides a complete set of interaction primitives (custom commands). These map to the `[CMD]` level in structured logging:
+`mozClick`, `mozSwipe`, `mozVerify`, `mozVerifyElement`, `mozVerifyElementsByGroup`, `mozEnterText`, `mozPressEnter` -- these are your building blocks. Compose tests from them.
 
 | Primitive | Purpose |
 |-----------|---------|
@@ -92,47 +92,32 @@ The framework provides a complete set of interaction primitives (custom commands
 | `mozVerifyElementAbsent(selector)` | Verify element is not displayed |
 | `navigateToPage()` | Navigate via the navigation graph |
 
-### When to wrap primitives into a page object method (test step)
-
-Page object methods are test steps -- they map to the `[STEP]` level in structured logging and should read like steps in a TestRail test case. The structured log hierarchy is:
-
-- `[STEP]` -- a recognizable user action (page object method, e.g., `openMainMenu`)
-- `[CMD]` -- a framework primitive (e.g., `mozClick`)
-- `[LOC]` -- element lookup/wait
-- `[SEL]` -- the selector string argument
-
-**Wrap primitives into a test step when:**
-- The method name maps to a recognizable action that would appear as a step in a TestRail case (e.g., `openMainMenu`, `openItemMenu`, `saveEditBookmark`)
-- A failure at the `[STEP]` level in the log would immediately tell you *what user action failed* without reading the underlying `[CMD]`s
-- The grouping represents a logical user action, even if it's a single primitive today -- it may gain logging, preconditions, or additional steps later
-
-**Don't wrap when:**
-- The wrapper name doesn't add clarity beyond what the primitive + selector already says (e.g., `verifyBookmarkTitle(title)` vs `mozVerify(BookmarksSelectors.BOOKMARK_ITEM(title))` -- these read identically)
-- You're wrapping just to avoid typing the selector object name
-- The wrapper creates a new framework-level abstraction (e.g., `interactAndWait()`, `clickAndNavigate()`) -- that belongs in BasePage if anywhere
-
-The question isn't "how many primitives does it wrap?" but "does the method name create a meaningful `[STEP]` in the log that aids TestRail mapping and root cause analysis?"
-
-### Why this matters: bidirectional test case maintenance
-
-The structured logging is designed to be a source-of-truth execution trace that mirrors TestRail test cases. When test steps, custom commands, locators, and selectors are well-named:
-- TestRail cases can be used to write tests by interfacing with test factories
-- Test factory structured logging can be used to write or update TestRail cases
-- AI can generate test scaffolding from selectors, navigation nodes, and page object test steps
-
-This bidirectional flow only works when each layer (`[STEP]`/`[CMD]`/`[LOC]`/`[SEL]`) is meaningful and reads the same way a test case would read.
-
-### Root cause analysis test
-
-When deciding whether to create a test step, ask: "What happens when this fails? Will the `[STEP]` name in the log make it obvious *what user action broke* with close to zero processing effort?" If the step name isolates the issue (state, preconditions, helper malfunction) at a glance, it's a good test step.
-
 ### Do not extend BasePage
 
-Don't add new primitives to `BasePage.kt` unless you've identified a genuinely missing *category* of interaction that multiple pages need. The bar is high. Primitives are `[CMD]`-level operations; test steps are `[STEP]`-level and belong in page objects.
+Don't add new primitives to `BasePage.kt` unless you've identified a genuinely missing *category* of interaction that multiple pages need. The bar for adding to BasePage is high.
+
+### Don't create framework-level abstractions
+
+No `clickAndWaitForBookmarks()` -- that's `mozClick` + `navigateToPage`. No `interactAndWait()` -- that's a primitive trying to be a framework. These belong in BasePage if anywhere.
 
 ### Custom commands over custom waits
 
 If you're tempted to write a new wait/polling mechanism, you probably need a better selector (one that keys off the right element state) rather than new timing logic.
+
+### When to wrap primitives into page object test steps
+
+Page object methods are test steps. The structured log hierarchy is `[STEP]` > `[CMD]` > `[LOC]` > `[SEL]`, and test steps should read like steps in a TestRail test case. The question isn't "how many primitives does it wrap?" but "does wrapping improve logging and root cause analysis?"
+
+**Wrap when:**
+- The method name maps to a recognizable user action that would appear as a TestRail step (e.g., `openMainMenu`, `openItemMenu`, `saveEditBookmark`)
+- A `[STEP]`-level failure in the log would immediately tell you what user action broke -- without reading the underlying `[CMD]`s -- with close to zero processing effort
+- The grouping represents a logical user action, even if it's one primitive today
+
+**Don't wrap when:**
+- The wrapper name doesn't add clarity beyond primitive + selector (e.g., `verifyBookmarkTitle(title)` vs `mozVerify(BookmarksSelectors.BOOKMARK_ITEM(title))` -- these read identically)
+- You're wrapping just to avoid typing the selector object name
+
+This matters because the structured logging is designed as a bidirectional bridge to TestRail: well-named test steps, commands, locators, and selectors mean TestRail cases can generate tests via factories, and test logging can maintain TestRail cases. AI can also generate test scaffolding from selectors, navigation nodes, and page object test steps. This flow only works when each layer is meaningful and reads like a test case.
 
 ## Selectors and element strategy
 
