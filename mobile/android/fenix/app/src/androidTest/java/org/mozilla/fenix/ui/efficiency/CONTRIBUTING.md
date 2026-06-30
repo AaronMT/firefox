@@ -68,6 +68,10 @@ Before adding a function, ask: "Would another test for a different feature need 
 
 If you add a method to a page object, it should be useful to any test touching that page. If only your test calls it, it doesn't belong there.
 
+### Test steps belong on the page they operate on
+
+A page object method should only interact with the UI surface it represents. If a method on `BrowserPage` clicks through MainMenu and Collections selectors, it's crossing page boundaries -- put it on the page where the action starts, or split it across the relevant page objects. Similarly, don't chain primitives on one page object while interacting with another page's UI just because the return type allows it.
+
 ### Selectors are shared vocabulary too
 
 Define selectors once in the appropriate `selectors/*Selectors.kt` file. Assign meaningful groups. Don't create one-off selectors inline in tests.
@@ -133,6 +137,10 @@ Selectors should represent stable, semantic anchors: test tags, resource IDs, ac
 
 Groups turn element lists into meaningful assertions.
 
+### Groups are for static elements; use multiple `mozVerify` calls for dynamic data
+
+`mozVerifyElementsByGroup` works with selectors defined at compile time in the selectors file. When values come from test data at runtime (e.g., verifying that specific page titles appear in a collection), use individual `mozVerify` calls with parameterized selectors. Multiple `mozVerify` calls in the same assertion block on the same page is fine -- it's not the same anti-pattern as splitting assertions across navigation.
+
 ### Prefer existing selector strategies
 
 The 20+ strategies in `SelectorStrategy` cover Compose, Espresso, and UIAutomator. If none works, the UI itself may need a test hook (a test tag or content description) rather than a more complex selector.
@@ -184,6 +192,8 @@ These should be flagged in code review:
 | UI setup when config is available | Slower, flakier | Use constructor flags or pre-seeded data |
 | Journey tests without foundational coverage | Premature | Write presence/interaction tests first |
 | Framework-level abstractions in page objects | Belongs in BasePage if anywhere | Keep page object methods as test steps, not new primitives |
+| Page object methods crossing page boundaries | Breaks page object model | Put methods on the page they operate on, or use separate `on.<page>` calls |
+| Using `mozVerifyElementsByGroup` for dynamic data | Groups are compile-time; dynamic values won't match | Use individual `mozVerify` calls with parameterized selectors |
 
 ## Before you write: checklist
 
