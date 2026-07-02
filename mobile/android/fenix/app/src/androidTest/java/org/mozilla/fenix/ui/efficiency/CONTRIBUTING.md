@@ -194,6 +194,19 @@ These should be flagged in code review:
 | Framework-level abstractions in page objects | Belongs in BasePage if anywhere | Keep page object methods as test steps, not new primitives |
 | Page object methods crossing page boundaries | Breaks page object model | Put methods on the page they operate on, or use separate `on.<page>` calls |
 | Using `mozVerifyElementsByGroup` for dynamic data | Groups are compile-time; dynamic values won't match | Use individual `mozVerify` calls with parameterized selectors |
+| Using `@After` for critical state cleanup | If the runner crashes, `@After` is not called -- leaves dirty state that can break subsequent tests or worse, cause false passes from carried-over state | Push cleanup to pre-test setup, constructor flags, or runner-level mechanisms that run regardless of crash |
+| Handling unexpected popups in test assertions | System alerts, permission dialogs, and conditional modals break tests that aren't meant to verify them | Let custom commands handle view-blocking elements via fallback conditional checks -- this keeps the fix in one place (the primitive) rather than scattered across tests |
+
+## Handling unexpected popups and system dialogs
+
+Tests that aren't specifically verifying a popup, alert, or modal should not fail because one appeared unexpectedly. The framework's custom commands are designed to handle this: locators inside primitives can include fallback checks for view-blocking elements (system alerts, client popups, app modals) in priority order.
+
+Don't add popup handling logic to individual tests. If a system dialog or conditional modal is blocking your test:
+- If it appears reliably, suppress it via configuration (e.g., `isPageLoadTranslationsPromptEnabled = false` in the BaseTest constructor)
+- If it appears sometimes, the custom command that encounters it should handle the dismissal -- one fix in one place
+- If it requires state detection (e.g., permission state determines whether a dialog appears), use that state to drive conditional checks within the primitive, not the test
+
+The goal is stability first, speed second. Adding conditional checks for view-blocking elements in custom commands is acceptable overhead -- it's cheaper than flaky tests.
 
 ## Before you write: checklist
 
