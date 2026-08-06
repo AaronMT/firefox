@@ -1,0 +1,241 @@
+<!doctype html>
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+   - License, v. 2.0. If a copy of the MPL was not distributed with this
+   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TAE Dashboard — Test Automation Efficiency</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="page-head">
+      <div class="wrap">
+        <div class="head-row">
+          <div>
+            <p class="eyebrow">Fenix &middot; ui/efficiency</p>
+            <h1>Test Automation Efficiency</h1>
+            <p class="sub">
+              Conversion progress, coverage surface, and framework health for
+              the TAE harness replacing the legacy Fenix UI suite.
+            </p>
+          </div>
+          <button
+            id="theme-toggle"
+            class="theme-toggle"
+            type="button"
+            aria-label="Toggle colour theme"
+          >
+            <span data-theme-icon></span>
+          </button>
+        </div>
+        <p class="stamp">
+          Generated <span id="generated-at"></span> &middot; parsed from
+          <code>ui/efficiency</code> and the legacy <code>ui/</code> suite
+        </p>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <!-- ---------------------------------------------------------- headline -->
+      <section class="panel hero-panel" aria-labelledby="h-headline">
+        <h2 id="h-headline" class="visually-hidden">Headline</h2>
+        <div class="hero-grid">
+          <div class="hero">
+            <p class="hero-label">Legacy tests converted to TAE</p>
+            <p class="hero-figure" id="hero-converted"></p>
+            <p class="hero-note" id="hero-note"></p>
+          </div>
+          <div class="meter-block">
+            <div class="meter-head">
+              <span class="meter-label"
+                >Legacy smoke-test coverage converted</span
+              >
+              <span class="meter-value" id="smoke-meter-value"></span>
+            </div>
+            <div class="meter" role="img" id="smoke-meter-role">
+              <div class="meter-fill" id="smoke-meter-fill"></div>
+            </div>
+            <p class="meter-note" id="smoke-meter-note"></p>
+          </div>
+        </div>
+        <div class="kpi-row" id="kpi-row"></div>
+      </section>
+
+      <!-- ------------------------------------------------------ progress -->
+      <section class="panel" aria-labelledby="h-progress">
+        <div class="panel-head">
+          <h2 id="h-progress">Conversion progress</h2>
+          <p class="panel-sub">
+            Every converted legacy test carries a
+            <code>@Converted</code> annotation stamped with the month it landed.
+            These are those stamps, in order.
+          </p>
+        </div>
+        <div class="chart-duo">
+          <figure class="chart-fig">
+            <figcaption>
+              <span class="fig-title">Cumulative legacy tests converted</span>
+              <span class="fig-sub">running total by annotation month</span>
+            </figcaption>
+            <div class="chart" id="chart-cumulative"></div>
+          </figure>
+          <figure class="chart-fig">
+            <figcaption>
+              <span class="fig-title">Conversions landed per month</span>
+              <span class="fig-sub">new <code>@Converted</code> stamps</span>
+            </figcaption>
+            <div class="chart" id="chart-monthly"></div>
+          </figure>
+        </div>
+      </section>
+
+      <!-- ------------------------------------------------------ by area -->
+      <section class="panel" aria-labelledby="h-areas">
+        <div class="panel-head">
+          <h2 id="h-areas">Where conversion stands, by legacy suite</h2>
+          <p class="panel-sub">
+            Each bar is one legacy test class. Converted tests are highlighted;
+            the remainder is the work still queued behind it.
+          </p>
+        </div>
+        <div class="legend" id="areas-legend"></div>
+        <div class="chart" id="chart-areas"></div>
+        <p class="chart-foot" id="areas-foot"></p>
+      </section>
+
+      <!-- ------------------------------------------------------ economy -->
+      <section class="panel" aria-labelledby="h-economy">
+        <div class="panel-head">
+          <h2 id="h-economy">Test economy</h2>
+          <p class="panel-sub">
+            The point of the harness is that the expensive layer is shared, so
+            an individual test stays small and a UI change is fixed once instead
+            of once per test.
+          </p>
+        </div>
+        <div class="econ-grid">
+          <div class="econ-charts">
+            <figure class="chart-fig">
+              <figcaption>
+                <span class="fig-title">Average lines of test body</span>
+                <span class="fig-sub"
+                  >legacy test vs. the TAE test that replaced it</span
+                >
+              </figcaption>
+              <div class="chart" id="chart-loc"></div>
+            </figure>
+            <figure class="chart-fig">
+              <figcaption>
+                <span class="fig-title">Where the framework's code lives</span>
+                <span class="fig-sub">Kotlin lines by layer</span>
+              </figcaption>
+              <div class="chart" id="chart-layers"></div>
+            </figure>
+          </div>
+          <aside class="econ-side" id="econ-side"></aside>
+        </div>
+      </section>
+
+      <!-- ------------------------------------------------------ surface -->
+      <section class="panel" aria-labelledby="h-surface">
+        <div class="panel-head">
+          <h2 id="h-surface">Coverage surface</h2>
+          <p class="panel-sub">
+            What the harness can currently reach: modelled screens, the
+            navigation graph that routes between them, and the selector
+            catalogue that resolves their elements.
+          </p>
+        </div>
+        <div class="chart-duo">
+          <figure class="chart-fig">
+            <figcaption>
+              <span class="fig-title">Selector strategies by UI toolkit</span>
+              <span class="fig-sub" id="strategies-sub"></span>
+            </figcaption>
+            <div class="chart" id="chart-strategies"></div>
+          </figure>
+          <figure class="chart-fig">
+            <figcaption>
+              <span class="fig-title">Navigation hubs</span>
+              <span class="fig-sub">pages by graph edges in and out</span>
+            </figcaption>
+            <div class="chart" id="chart-hubs"></div>
+          </figure>
+        </div>
+      </section>
+
+      <!-- ------------------------------------------------------ integrity -->
+      <section class="panel" aria-labelledby="h-integrity">
+        <div class="panel-head">
+          <h2 id="h-integrity">Annotation integrity</h2>
+          <p class="panel-sub">
+            Every <code>@Converted(replacedBy = …)</code> pointer should resolve
+            to a real, non-ignored <code>@Test</code> in the TAE suite. These
+            are the results of checking all of them.
+          </p>
+        </div>
+        <div id="integrity"></div>
+      </section>
+
+      <!-- ------------------------------------------------------ table -->
+      <section class="panel" aria-labelledby="h-table">
+        <div class="panel-head">
+          <h2 id="h-table">Conversion ledger</h2>
+          <p class="panel-sub">
+            The full record behind every figure above &mdash; also the table
+            view for the charts.
+          </p>
+        </div>
+        <div class="table-controls">
+          <label class="field">
+            <span class="visually-hidden">Filter conversions</span>
+            <input
+              id="ledger-filter"
+              type="search"
+              placeholder="Filter by test, class, or bug…"
+            />
+          </label>
+          <span class="table-count" id="ledger-count"></span>
+        </div>
+        <div class="table-scroll">
+          <table class="ledger">
+            <colgroup>
+              <col class="c-legacy" />
+              <col class="c-repl" />
+              <col class="c-bug" />
+              <col class="c-month" />
+              <col class="c-status" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th scope="col">Legacy test</th>
+                <th scope="col">Replaced by</th>
+                <th scope="col">Bug</th>
+                <th scope="col">Month</th>
+                <th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody id="ledger-body"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <footer class="page-foot">
+      <div class="wrap">
+        <p>
+          Regenerate with <code>python3 taedash.py</code> from this directory,
+          then reload. All figures are parsed from the tree &mdash; nothing here
+          is hand-entered.
+        </p>
+      </div>
+    </footer>
+
+    <div id="tooltip" class="tooltip" role="status" aria-live="polite"></div>
+
+    <script src="data.js"></script>
+    <script src="dashboard.js"></script>
+  </body>
+</html>
