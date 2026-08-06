@@ -549,6 +549,23 @@ def build(ui_root, repo_root):
         if t["status"] != "ok"
     ]
 
+    # A pointer can resolve cleanly and still be wrong: if two legacy tests name
+    # the same TAE test, one of them is almost always a copy-paste, and the TAE
+    # test that should have been named goes unclaimed.
+    claims = defaultdict(list)
+    for c in conversions:
+        for t in c["targets"]:
+            claims[t["pointer"]].append(c["legacy"])
+    for pointer, claimants in sorted(claims.items()):
+        if len(claimants) > 1:
+            bad_pointers.append({
+                "legacy": " + ".join(claimants),
+                "pointer": pointer,
+                "status": "double-claim",
+                "actualClass": "",
+                "claimants": claimants,
+            })
+
     def avg(xs):
         return round(sum(xs) / len(xs), 1) if xs else 0
 

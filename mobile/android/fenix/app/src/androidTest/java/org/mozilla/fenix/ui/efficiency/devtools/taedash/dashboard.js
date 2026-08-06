@@ -34,6 +34,7 @@
     "wrong-class": { finding: "Wrong class", ledger: "Wrong class" },
     missing: { finding: "No such test", ledger: "Missing" },
     ignored: { finding: "Points at @Ignore", ledger: "Ignored" },
+    "double-claim": { finding: "Claimed twice", ledger: "Claimed twice" },
   };
 
   // ------------------------------------------------------------------ utils
@@ -1122,8 +1123,8 @@
         "p",
         "integrity-title",
         bad.length
-          ? `${bad.length} of ${S.totalPointers} pointers do not resolve`
-          : `All ${S.totalPointers} pointers resolve`
+          ? `${bad.length} of ${S.totalPointers} pointers need attention`
+          : `All ${S.totalPointers} pointers check out`
       )
     );
     txt.appendChild(
@@ -1131,8 +1132,8 @@
         "p",
         "integrity-text",
         bad.length
-          ? `${ok} pointers resolve to a live TAE test. The rest name a class that does not hold the method they point at, so the legacy test's stated replacement cannot be located by name.`
-          : "Every @Converted annotation names a real, non-ignored TAE test."
+          ? `${ok} pointers resolve to a live TAE test and are claimed once. The rest either name a class that does not hold the method they point at, or resolve cleanly but are claimed by two legacy tests — which leaves the TAE test that should have been named unclaimed. See docs/conversion-bookkeeping-pitfalls.md.`
+          : "Every @Converted annotation names a real, non-ignored TAE test, claimed exactly once."
       )
     );
     banner.appendChild(txt);
@@ -1170,6 +1171,18 @@
         );
         detail.appendChild(html("code", null, b.actualClass));
         detail.appendChild(document.createTextNode("."));
+      } else if (b.status === "double-claim") {
+        detail.appendChild(
+          document.createTextNode(
+            `${b.claimants.length} legacy tests both name `
+          )
+        );
+        detail.appendChild(html("code", null, ptr));
+        detail.appendChild(
+          document.createTextNode(
+            ". It resolves, so it passes an existence check — but one of the two is a copy-paste, and the TAE test that should have been named is left unclaimed."
+          )
+        );
       } else {
         detail.appendChild(document.createTextNode("Points at "));
         detail.appendChild(html("code", null, ptr));
