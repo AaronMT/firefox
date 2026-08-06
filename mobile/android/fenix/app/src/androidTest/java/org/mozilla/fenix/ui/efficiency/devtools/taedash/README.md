@@ -18,16 +18,25 @@ open index.html        # or just double-click it
 
 | Panel                | Reads from                                                                 |
 | -------------------- | -------------------------------------------------------------------------- |
-| Headline & KPIs      | `@Test`/`@SmokeTest`/`@Ignore` counts in `ui/efficiency/tests` and legacy `ui/` |
+| Headline & KPIs      | `@SmokeTest`/`@Ignore`/`@Converted` counts in legacy `ui/` and `ui/efficiency/tests` |
 | Conversion progress  | the `since = "YYYY-MM"` stamp on each legacy `@Converted`                    |
-| By legacy suite      | converted vs. total `@Test` per legacy test class                            |
-| Test economy         | measured test-body lengths, plus Kotlin line counts per `ui/efficiency` layer |
+| By legacy suite      | converted vs. active `@SmokeTest` per legacy test class                      |
+| Test economy         | test-body lengths, per-layer line counts, the `robots/` layer, and direct toolkit calls |
 | Coverage surface     | `Selector(...)` declarations in `selectors/`, `NavigationRegistry.register` edges in `pageObjects/` |
+| The verb library     | public `fun`s on `BasePage`/`BaseTest`, bucketed by what they do             |
+| Framework heat map   | per-screen selectors, groups, graph degree, `on.*` usage and page-object size |
 | Annotation integrity | whether every `replacedBy` pointer resolves to a real, non-`@Ignore`d `@Test` |
 | Conversion ledger    | every `@Converted` record; doubles as the table view for the charts          |
 
 Every figure is parsed from the tree at generation time — nothing is hand-entered, so a stale
 number means `taedash.py` needs re-running, not that someone forgot to edit a constant.
+
+## Scope
+
+**The conversion figures count the legacy `@SmokeTest` suite only** — that is the effort's target.
+A legacy smoke test that is `@Ignore`d is disabled rather than pending, so it is held out of the
+denominator and reported separately. Conversions of non-smoke legacy tests are excluded from the
+progress figures and called out in the headline. Whole-suite counts appear only as context.
 
 ## Files
 

@@ -527,23 +527,26 @@
 
   function renderHeadline() {
     document.getElementById("generated-at").textContent = D.generatedAt;
-    document.getElementById("hero-converted").textContent = fmtInt(S.converted);
+    document.getElementById("hero-converted").textContent = fmtInt(
+      S.smokeConverted
+    );
     document.getElementById("hero-note").textContent =
-      `of ${fmtInt(S.legacyTests)} legacy @Test methods across ${S.legacyClasses} classes — ` +
-      `replaced by ${fmtInt(S.taeLive)} live tests in the TAE suite.`;
+      `of ${fmtInt(S.smokeActive)} active legacy @SmokeTest methods across ${S.smokeClasses} classes. ` +
+      `${fmtInt(S.smokeRemaining)} still to go.`;
 
-    const pct = Math.round((S.convertedSmoke / S.legacySmoke) * 100);
+    const pct = Math.round((S.smokeConverted / S.smokeActive) * 100);
     document.getElementById("smoke-meter-value").textContent = `${pct}%`;
     document.getElementById("smoke-meter-fill").style.width = `${pct}%`;
     document
       .getElementById("smoke-meter-role")
       .setAttribute(
         "aria-label",
-        `${S.convertedSmoke} of ${S.legacySmoke} legacy smoke tests converted, ${pct} percent`
+        `${S.smokeConverted} of ${S.smokeActive} active legacy smoke tests converted, ${pct} percent`
       );
     document.getElementById("smoke-meter-note").textContent =
-      `${fmtInt(S.convertedSmoke)} of ${fmtInt(S.legacySmoke)} legacy @SmokeTest methods. ` +
-      `Smoke is where conversion is concentrated: ${Math.round((S.convertedSmoke / S.converted) * 100)}% of all conversions so far.`;
+      `${fmtInt(S.smokeTotal)} legacy @SmokeTest methods exist; ${S.smokeIgnored} are @Ignore'd and ` +
+      `held out of the denominator as they are disabled, not pending. ` +
+      `${S.nonSmokeConverted} non-smoke conversions are excluded from every figure on this page.`;
 
     const kpis = [
       {
@@ -556,6 +559,11 @@
         v: fmtInt(S.selectors),
         l: "Selectors catalogued",
         n: `${S.parameterizedSelectors} parameterised`,
+      },
+      {
+        v: fmtInt(S.verbs),
+        l: "Harness verbs",
+        n: "the moz* primitive library",
       },
       { v: fmtInt(S.edges), l: "Navigation edges", n: "routable by BFS" },
       { v: fmtInt(S.bugs), l: "Bugzilla bugs", n: "tracking conversions" },
@@ -608,8 +616,8 @@
   function renderAreas() {
     const c1 = token("--series-1");
     const gray = token("--de-emphasis");
-    const areas = D.areas.filter(a => a.converted > 0);
-    const hidden = D.areas.filter(a => a.converted === 0);
+    const areas = D.areas.filter(a => a.smokeConverted > 0);
+    const hidden = D.areas.filter(a => a.smokeConverted === 0);
 
     const legend = document.getElementById("areas-legend");
     legend.innerHTML = "";
@@ -632,33 +640,42 @@
         areas.map(a => ({
           label: a.area.replace(/Test$/, ""),
           segments: [
-            { value: a.converted, color: c1, name: "Converted" },
-            { value: a.total - a.converted, color: gray, name: "Remaining" },
-          ],
-          endLabel: `${a.converted}/${a.total}`,
-          tipRows: [
-            { label: "Converted", value: fmtInt(a.converted), color: c1 },
+            { value: a.smokeConverted, color: c1, name: "Converted" },
             {
-              label: "Remaining",
-              value: fmtInt(a.total - a.converted),
+              value: a.smokeActive - a.smokeConverted,
               color: gray,
+              name: "Remaining",
             },
+          ],
+          endLabel: `${a.smokeConverted}/${a.smokeActive}`,
+          tipRows: [
             {
               label: "Smoke converted",
-              value: `${a.smokeConverted}/${a.smoke}`,
+              value: fmtInt(a.smokeConverted),
+              color: c1,
             },
+            {
+              label: "Smoke remaining",
+              value: fmtInt(a.smokeActive - a.smokeConverted),
+              color: gray,
+            },
+            { label: "Disabled (@Ignore)", value: fmtInt(a.smokeIgnored) },
+            { label: "All @Test in class", value: fmtInt(a.total) },
           ],
         })),
         { barH: 17, gap: 11 }
       )
     );
 
-    const remaining = D.areas.reduce((s, a) => s + (a.total - a.converted), 0);
-    const untouched = hidden.reduce((s, a) => s + a.total, 0);
+    const remaining = D.areas.reduce(
+      (s, a) => s + (a.smokeActive - a.smokeConverted),
+      0
+    );
+    const untouched = hidden.reduce((s, a) => s + a.smokeActive, 0);
     document.getElementById("areas-foot").textContent =
-      `All ${areas.length} legacy classes with at least one conversion are shown. ` +
-      `A further ${hidden.length} classes (${fmtInt(untouched)} tests) have no conversions yet; ` +
-      `${fmtInt(remaining)} legacy tests remain unconverted overall.`;
+      `All ${areas.length} legacy classes with at least one converted smoke test are shown. ` +
+      `A further ${hidden.length} classes (${fmtInt(untouched)} active smoke tests) have none yet; ` +
+      `${fmtInt(remaining)} active legacy smoke tests remain overall.`;
   }
 
   function renderEconomy() {
@@ -756,6 +773,21 @@
         l: `${fmtInt(S.selectors)} selectors across ${S.catalogs} catalogues — centralised, so a UI change is fixed once.`,
       },
     ];
+    const screenDrop = Math.round(
+      ((S.robotLinesPerScreen - S.pageModelLinesPerScreen) /
+        S.robotLinesPerScreen) *
+        100
+    );
+    stats.push(
+      {
+        v: `${screenDrop}% less per screen`,
+        l: `Modelling a screen takes ${S.pageModelLinesPerScreen} lines of page object + selectors, against ${S.robotLinesPerScreen} lines per robot in the legacy layer (${fmtInt(S.robotLines)} lines across ${S.robotFiles} robots).`,
+      },
+      {
+        v: `${fmtInt(S.legacyToolkitCalls)} → ${fmtInt(S.taeToolkitCalls)}`,
+        l: `Direct Espresso/UIAutomator/Compose calls in test bodies: ${fmtInt(S.legacyToolkitCalls)} across ${S.legacyToolkitFiles} of ${S.legacyTestFiles} legacy test files, versus ${fmtInt(S.taeToolkitCalls)} in ${S.taeToolkitFiles} of ${S.taeTestFiles} TAE files. The toolkit stays behind the harness.`,
+      }
+    );
     stats.forEach((s, i) => {
       if (i) {
         side.appendChild(html("div", "econ-divider"));
@@ -856,6 +888,184 @@
       );
     });
   }
+
+  function renderPrimitives() {
+    const c1 = token("--series-1");
+    const cats = D.primitiveCategories;
+    document.getElementById("prim-sub").textContent =
+      `${S.verbs} verbs plus ${S.primitives - S.verbs} lifecycle hooks, on BasePage and BaseTest`;
+
+    const byCat = {};
+    D.primitives.forEach(p => {
+      (byCat[p.category] = byCat[p.category] || []).push(p);
+    });
+
+    mount("chart-primitives", (c, w) =>
+      hBars(
+        c,
+        w,
+        cats.map(k => ({
+          label: k.category,
+          segments: [{ value: k.count, color: c1, name: k.category }],
+          endLabel: String(k.count),
+          tipRows: (byCat[k.category] || [])
+            .slice(0, 10)
+            .map(p => ({ label: p.name, value: "" })),
+        })),
+        { barH: 19, gap: 13, minLabelW: 100 }
+      )
+    );
+
+    const list = document.getElementById("prim-list");
+    list.innerHTML = "";
+    cats.forEach(k => {
+      const group = html("div", "prim-group");
+      const head = html("div", "prim-group-head");
+      const dot = html("span", "tag-dot");
+      dot.style.background = c1;
+      head.appendChild(dot);
+      head.appendChild(html("span", "prim-group-name", k.category));
+      head.appendChild(html("span", "prim-group-count", String(k.count)));
+      group.appendChild(head);
+      const verbs = html("div", "prim-verbs");
+      (byCat[k.category] || []).forEach(p => {
+        const chip = html("code", "prim-verb", p.name);
+        chip.title = `${p.name} — defined in ${p.source}`;
+        verbs.appendChild(chip);
+      });
+      group.appendChild(verbs);
+      list.appendChild(group);
+    });
+  }
+
+  // Sequential single-hue ramps, low -> high, stepped evenly and selected per
+  // surface. Slot 0 is the zero step and is allowed to recede toward the
+  // surface, as a sequential (not ordinal) scale permits.
+  const HEAT_RAMP_LIGHT = [
+    "#f4f7fb",
+    "#b7d3f6",
+    "#86b6ef",
+    "#5598e7",
+    "#2a78d6",
+    "#1c5cab",
+    "#104281",
+  ];
+  const HEAT_RAMP_DARK = [
+    "#1f242b",
+    "#104281",
+    "#1c5cab",
+    "#2a78d6",
+    "#5598e7",
+    "#86b6ef",
+    "#b7d3f6",
+  ];
+
+  /** Relative luminance, so a label inside a filled cell always clears contrast. */
+  function isDarkFill(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(v => {
+      const c = v / 255;
+      return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b < 0.36;
+  }
+
+  function renderHeatmap() {
+    const COLS = [
+      { key: "selectors", label: "Selectors" },
+      { key: "groups", label: "Groups" },
+      { key: "inbound", label: "Edges in" },
+      { key: "outbound", label: "Edges out" },
+      { key: "usage", label: "Test uses" },
+      { key: "lines", label: "Lines" },
+    ];
+    const body = document.getElementById("heat-body");
+    const filterEl = document.getElementById("heat-filter");
+
+    function draw(q) {
+      const dark = document.documentElement.getAttribute("data-theme")
+        ? document.documentElement.getAttribute("data-theme") === "dark"
+        : window.matchMedia("(prefers-color-scheme: dark)").matches;
+      const ramp = dark ? HEAT_RAMP_DARK : HEAT_RAMP_LIGHT;
+      const needle = q.trim().toLowerCase();
+      const rows = D.heatmap.filter(
+        r => !needle || r.page.toLowerCase().includes(needle)
+      );
+      // Each column carries its own scale: the units are not comparable.
+      const maxes = {};
+      COLS.forEach(c => {
+        maxes[c.key] = Math.max(1, ...D.heatmap.map(r => r[c.key]));
+      });
+
+      body.innerHTML = "";
+      if (!rows.length) {
+        const tr = html("tr", "empty-row");
+        const td = html("td", null, "No screens match that filter.");
+        td.colSpan = COLS.length + 1;
+        tr.appendChild(td);
+        body.appendChild(tr);
+        return;
+      }
+
+      rows.forEach(r => {
+        const tr = html("tr");
+        const th = html("th", "heat-screen", r.page.replace(/Page$/, ""));
+        th.scope = "row";
+        tr.appendChild(th);
+        COLS.forEach(c => {
+          const v = r[c.key];
+          const t = v / maxes[c.key];
+          const step = v === 0 ? 0 : 1 + Math.round(t * (ramp.length - 2));
+          const fill = ramp[step];
+          const td = html("td", "heat-cell", fmtInt(v));
+          td.style.background = fill;
+          // A label inside a filled cell takes white or ink by the fill's
+          // luminance, so it always clears contrast.
+          let ink = "var(--text-muted)";
+          if (v > 0) {
+            ink = isDarkFill(fill) ? "#ffffff" : "#0b0b0b";
+          }
+          td.style.color = ink;
+          td.title = `${r.page} — ${c.label}: ${fmtInt(v)} (column max ${fmtInt(maxes[c.key])})`;
+          tr.appendChild(td);
+        });
+        body.appendChild(tr);
+      });
+    }
+
+    // Scale legend, so the ramp is readable as an encoding rather than decoration.
+    function drawScale() {
+      const dark = document.documentElement.getAttribute("data-theme")
+        ? document.documentElement.getAttribute("data-theme") === "dark"
+        : window.matchMedia("(prefers-color-scheme: dark)").matches;
+      const ramp = dark ? HEAT_RAMP_DARK : HEAT_RAMP_LIGHT;
+      const box = document.getElementById("heat-scale");
+      box.innerHTML = "";
+      box.appendChild(html("span", "heat-scale-label", "less"));
+      const strip = html("span", "heat-strip");
+      ramp.forEach(c => {
+        const cell = html("span", "heat-strip-cell");
+        cell.style.background = c;
+        strip.appendChild(cell);
+      });
+      box.appendChild(strip);
+      box.appendChild(html("span", "heat-scale-label", "more"));
+    }
+
+    filterEl.addEventListener("input", () => draw(filterEl.value));
+    heatRedraw = () => {
+      draw(filterEl.value);
+      drawScale();
+    };
+    draw("");
+    drawScale();
+
+    document.getElementById("heat-foot").textContent =
+      `${D.heatmap.length} modelled screens. ${S.pagesUnusedByTests} are not yet reached by any test ` +
+      `via its on.* handle — modelled, but unexercised. All ${fmtInt(S.selectors)} selectors resolve to a page.`;
+  }
+
+  let heatRedraw = () => {};
 
   function renderIntegrity() {
     const box = document.getElementById("integrity");
@@ -1087,9 +1297,10 @@
       localStorage.setItem("tae-theme", next);
       sync();
       redrawAll();
-      // Re-run the DOM-token-dependent panels.
+      // Re-run the panels whose colours are read from tokens at draw time.
       document.getElementById("integrity").innerHTML = "";
       renderIntegrity();
+      heatRedraw();
     });
 
     window
@@ -1097,11 +1308,14 @@
       .addEventListener("change", () => {
         sync();
         redrawAll();
+        heatRedraw();
       });
     sync();
   }
 
   renderHeadline();
+  renderPrimitives();
+  renderHeatmap();
   renderProgress();
   renderAreas();
   renderEconomy();

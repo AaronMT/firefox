@@ -37,6 +37,7 @@
         <p class="stamp">
           Generated <span id="generated-at"></span> &middot; parsed from
           <code>ui/efficiency</code> and the legacy <code>ui/</code> suite
+          &middot; conversion scope is the legacy <code>@SmokeTest</code> suite
         </p>
       </div>
     </header>
@@ -47,14 +48,14 @@
         <h2 id="h-headline" class="visually-hidden">Headline</h2>
         <div class="hero-grid">
           <div class="hero">
-            <p class="hero-label">Legacy tests converted to TAE</p>
+            <p class="hero-label">Legacy smoke tests converted</p>
             <p class="hero-figure" id="hero-converted"></p>
             <p class="hero-note" id="hero-note"></p>
           </div>
           <div class="meter-block">
             <div class="meter-head">
               <span class="meter-label"
-                >Legacy smoke-test coverage converted</span
+                >Active legacy smoke suite converted</span
               >
               <span class="meter-value" id="smoke-meter-value"></span>
             </div>
@@ -72,7 +73,7 @@
         <div class="panel-head">
           <h2 id="h-progress">Conversion progress</h2>
           <p class="panel-sub">
-            Every converted legacy test carries a
+            Every converted legacy smoke test carries a
             <code>@Converted</code> annotation stamped with the month it landed.
             These are those stamps, in order.
           </p>
@@ -80,7 +81,7 @@
         <div class="chart-duo">
           <figure class="chart-fig">
             <figcaption>
-              <span class="fig-title">Cumulative legacy tests converted</span>
+              <span class="fig-title">Cumulative smoke tests converted</span>
               <span class="fig-sub">running total by annotation month</span>
             </figcaption>
             <div class="chart" id="chart-cumulative"></div>
@@ -100,7 +101,8 @@
         <div class="panel-head">
           <h2 id="h-areas">Where conversion stands, by legacy suite</h2>
           <p class="panel-sub">
-            Each bar is one legacy test class. Converted tests are highlighted;
+            Each bar is one legacy test class, counting only its
+            <code>@SmokeTest</code> methods. Converted tests are highlighted;
             the remainder is the work still queued behind it.
           </p>
         </div>
@@ -168,6 +170,70 @@
             <div class="chart" id="chart-hubs"></div>
           </figure>
         </div>
+      </section>
+
+      <!-- ------------------------------------------------------ primitives -->
+      <section class="panel" aria-labelledby="h-primitives">
+        <div class="panel-head">
+          <h2 id="h-primitives">The verb library</h2>
+          <p class="panel-sub">
+            The public primitives <code>BasePage</code> and
+            <code>BaseTest</code> expose. Tests are composed from these, so the
+            spread across categories is roughly what a test can say without
+            reaching for raw Espresso or UIAutomator.
+          </p>
+        </div>
+        <div class="prim-grid">
+          <figure class="chart-fig">
+            <figcaption>
+              <span class="fig-title">Primitives by category</span>
+              <span class="fig-sub" id="prim-sub"></span>
+            </figcaption>
+            <div class="chart" id="chart-primitives"></div>
+          </figure>
+          <div class="prim-list" id="prim-list"></div>
+        </div>
+      </section>
+
+      <!-- ------------------------------------------------------ heatmap -->
+      <section class="panel" aria-labelledby="h-heatmap">
+        <div class="panel-head">
+          <h2 id="h-heatmap">Framework heat map</h2>
+          <p class="panel-sub">
+            How thoroughly each modelled screen is described, and how hard the
+            tests lean on it. Darker means more. Each column is scaled against
+            its own maximum &mdash; the units differ, so compare down a column,
+            not across a row.
+          </p>
+        </div>
+        <div class="heat-controls">
+          <label class="field">
+            <span class="visually-hidden">Filter screens</span>
+            <input
+              id="heat-filter"
+              type="search"
+              placeholder="Filter screens…"
+            />
+          </label>
+          <div class="heat-scale" id="heat-scale"></div>
+        </div>
+        <div class="table-scroll heat-scroll">
+          <table class="heat" id="heat-table">
+            <thead>
+              <tr>
+                <th scope="col">Screen</th>
+                <th scope="col" class="num">Selectors</th>
+                <th scope="col" class="num">Groups</th>
+                <th scope="col" class="num">Edges in</th>
+                <th scope="col" class="num">Edges out</th>
+                <th scope="col" class="num">Test uses</th>
+                <th scope="col" class="num">Lines</th>
+              </tr>
+            </thead>
+            <tbody id="heat-body"></tbody>
+          </table>
+        </div>
+        <p class="chart-foot" id="heat-foot"></p>
       </section>
 
       <!-- ------------------------------------------------------ integrity -->

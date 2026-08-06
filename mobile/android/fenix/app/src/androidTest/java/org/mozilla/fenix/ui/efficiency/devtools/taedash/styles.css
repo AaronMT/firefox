@@ -440,6 +440,144 @@ main {
   background: var(--gridline);
 }
 
+/* ------------------------------------------------------------- primitives */
+
+.prim-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+  gap: 30px;
+  align-items: start;
+}
+
+.prim-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.prim-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+
+.prim-group-name {
+  font-size: 13px;
+  font-weight: 620;
+}
+
+.prim-group-count {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.prim-verbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.prim-verb {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  background: var(--page-plane);
+  border: 1px solid var(--gridline);
+  border-radius: 5px;
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------- heatmap */
+
+.heat-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  margin-bottom: 14px;
+}
+
+.heat-scale {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.heat-scale-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.heat-strip {
+  display: inline-flex;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.heat-strip-cell {
+  width: 20px;
+  height: 12px;
+}
+
+.heat-scroll {
+  max-height: 620px;
+}
+
+table.heat {
+  width: 100%;
+  min-width: 700px;
+  border-collapse: separate;
+  border-spacing: 2px;
+  table-layout: fixed;
+  font-size: 13px;
+}
+
+.heat th:first-child,
+.heat td:first-child {
+  width: 26%;
+}
+
+.heat th,
+.heat td {
+  text-align: left;
+  padding: 7px 10px;
+}
+
+.heat thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-1);
+  font-size: 11.5px;
+  font-weight: 620;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.heat thead th.num,
+.heat td.heat-cell {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.heat-screen {
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  background: var(--surface-1);
+}
+
+.heat-cell {
+  border-radius: 4px;
+  min-width: 62px;
+}
+
 /* -------------------------------------------------------------- integrity */
 
 .integrity-banner {
@@ -704,7 +842,8 @@ table.ledger {
 
 @media (max-width: 860px) {
   .hero-grid,
-  .econ-grid {
+  .econ-grid,
+  .prim-grid {
     grid-template-columns: minmax(0, 1fr);
     gap: 26px;
   }

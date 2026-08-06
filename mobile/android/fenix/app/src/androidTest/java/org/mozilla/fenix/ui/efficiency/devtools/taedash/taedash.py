@@ -154,7 +154,20 @@ def parse_nav_edges(po_dir):
         ).read()
         page = re.search(r'override\s+val\s+pageName\s*=\s*"([^"]+)"', src)
         page_name = page.group(1) if page else fname[:-3]
-        pages.append({"name": page_name, "file": fname, "lines": len(src.splitlines())})
+        # The catalog a page owns is whichever one it filters in
+        # mozGetSelectorsByGroup -- authoritative, unlike guessing from the name
+        # (BrowserPage owns BrowserPageSelectors, not BrowserSelectors).
+        owned = re.search(
+            r"mozGetSelectorsByGroup[^}]*?([A-Za-z][A-Za-z0-9_]*Selectors)\s*\.\s*all",
+            src,
+            re.S,
+        )
+        pages.append({
+            "name": page_name,
+            "file": fname,
+            "lines": len(src.splitlines()),
+            "catalog": owned.group(1) if owned else "",
+        })
 
         for m in re.finditer(r"NavigationRegistry\.register\(", src):
             block, _ = balanced_slice(src, m.end() - 1)
@@ -176,6 +189,99 @@ def parse_nav_edges(po_dir):
                 "launchOnly": "LaunchConfig" in block or steps == 0,
             })
     return pages, edges
+
+
+# The public verb library tests compose against. Categories are matched in order,
+# so the more specific patterns must come first.
+PRIMITIVE_CATEGORIES = [
+    ("Lifecycle", (r"^setUp$", r"^tearDown", r"^launchConfig$")),
+    (
+        "Navigation",
+        (r"^navigateToPage$", r"^mozOpenNotificationsTray$", r"^mozPressBack"),
+    ),
+    ("Assertion", (r"^mozVerify", r"^mozWaitUntil")),
+    ("Input", (r"^mozEnterText$", r"^mozClear", r"^mozPressEnter$")),
+    ("Gesture", (r"^mozSwipe", r"^mozLongClick$", r"^mozClick")),
+    ("State query", (r"^mozIs", r"^dismiss")),
+]
+
+# Exactly four spaces of indent = a direct class member. Deeper means a local
+# function nested inside another (e.g. `candidates` inside resolveComposeNode),
+# which is not part of the public verb surface.
+PUBLIC_FUN_RE = re.compile(
+    r"^ {4}(?!.*\bprivate\b)(?:open |internal |protected )*fun +([A-Za-z][A-Za-z0-9_]*) *\(",
+    re.M,
+)
+
+
+def parse_primitives(helpers_dir):
+    """Return the public verbs BasePage/BaseTest expose, bucketed by what they do."""
+    out = []
+    for fname in ("BasePage.kt", "BaseTest.kt"):
+        path = os.path.join(helpers_dir, fname)
+        if not os.path.exists(path):
+            continue
+        src = open(path, encoding="utf-8", errors="replace").read()
+        seen = set()
+        for m in PUBLIC_FUN_RE.finditer(src):
+            name = m.group(1)
+            if name in seen:
+                continue
+            seen.add(name)
+            category = "Other"
+            for label, patterns in PRIMITIVE_CATEGORIES:
+                if any(re.search(p, name) for p in patterns):
+                    category = label
+                    break
+            # Signature up to the closing paren, for the tooltip.
+            sig, _ = balanced_slice(src, m.end() - 1)
+            out.append({
+                "name": name,
+                "source": fname[:-3],
+                "category": category,
+                "args": sig.count(",") + 1 if sig.strip("()").strip() else 0,
+            })
+    return out
+
+
+def parse_page_accessors(page_context_path):
+    """Map the `on.<accessor>` name tests use to the page class it constructs."""
+    if not os.path.exists(page_context_path):
+        return {}
+    src = open(page_context_path, encoding="utf-8", errors="replace").read()
+    pattern = re.compile(r"val\s+([a-z][A-Za-z0-9_]*)\s*=\s*([A-Z][A-Za-z0-9_]*)\s*\(")
+    return {m.group(1): m.group(2) for m in pattern.finditer(src)}
+
+
+# Direct references to the UI toolkits. A test body containing these is coupled
+# to Espresso/UIAutomator/Compose; the whole point of the harness is that only
+# the shared layer touches them. Surfaced on the dashboard so the count is
+# auditable rather than a number to take on faith.
+TOOLKIT_API_RE = re.compile(
+    r"\bonView\(|\bwithId\(|\bwithText\(|\bmDevice\.|\bUiSelector\(|\bUiScrollable\(|"
+    r"\bcomposeTestRule\.onNode|\bonNodeWithTag\(|\bonNodeWithText\(|\bonNodeWithContentDescription\(|"
+    r"\bEspresso\.|\bmatch\(|\bcheck\(matches\("
+)
+
+
+def count_toolkit_calls(paths):
+    """Count direct UI-toolkit call sites across the given Kotlin files."""
+    total, files_touched = 0, 0
+    for p in paths:
+        src = open(p, encoding="utf-8", errors="replace").read()
+        n = len(TOOLKIT_API_RE.findall(src))
+        total += n
+        if n:
+            files_touched += 1
+    return total, files_touched
+
+
+def kt_files(d):
+    if not os.path.isdir(d):
+        return []
+    return [
+        os.path.join(dp, n) for dp, _, ns in os.walk(d) for n in ns if n.endswith(".kt")
+    ]
 
 
 def dir_stats(root, sub):
@@ -272,8 +378,14 @@ def build(ui_root, repo_root):
             "targets": targets,
         })
 
-    # --- cumulative conversion timeline
-    by_month = Counter(c["since"] for c in conversions if c["since"])
+    # The conversion effort targets the legacy @SmokeTest suite, so every
+    # progress figure below is scoped to it. An @Ignore'd legacy smoke test is
+    # disabled and not a conversion target while it stays that way, so it is
+    # held out of the denominator and reported separately.
+    smoke_conversions = [c for c in conversions if c["smoke"]]
+
+    # --- cumulative conversion timeline (smoke only)
+    by_month = Counter(c["since"] for c in smoke_conversions if c["since"])
     months = sorted(by_month)
     timeline, running = [], 0
     for mth in months:
@@ -282,7 +394,13 @@ def build(ui_root, repo_root):
 
     # --- per-area conversion status
     legacy_by_class = defaultdict(
-        lambda: {"total": 0, "converted": 0, "smoke": 0, "smokeConverted": 0}
+        lambda: {
+            "total": 0,
+            "converted": 0,
+            "smoke": 0,
+            "smokeConverted": 0,
+            "smokeIgnored": 0,
+        }
     )
     for t in legacy_tests:
         rec = legacy_by_class[t["class"]]
@@ -291,19 +409,69 @@ def build(ui_root, repo_root):
             rec["converted"] += 1
         if t["smoke"]:
             rec["smoke"] += 1
+            if t["ignored"]:
+                rec["smokeIgnored"] += 1
             if t["converted"]:
                 rec["smokeConverted"] += 1
+    for rec in legacy_by_class.values():
+        rec["smokeActive"] = rec["smoke"] - rec["smokeIgnored"]
     areas = [
         {"area": k, **v}
         for k, v in sorted(
             legacy_by_class.items(),
-            key=lambda kv: (-kv[1]["converted"], -kv[1]["total"]),
+            key=lambda kv: (-kv[1]["smokeConverted"], -kv[1]["smokeActive"]),
         )
+        if v["smokeActive"] > 0 or v["smokeConverted"] > 0
     ]
 
     # --- selectors + navigation
     selectors = parse_selectors(os.path.join(eff_root, "selectors"))
     pages, edges = parse_nav_edges(os.path.join(eff_root, "pageObjects"))
+    primitives = parse_primitives(os.path.join(eff_root, "helpers"))
+    accessors = parse_page_accessors(
+        os.path.join(eff_root, "helpers", "PageContext.kt")
+    )
+
+    # --- per-screen density: how thoroughly each modelled screen is described
+    sel_by_catalog = Counter()
+    groups_by_catalog = defaultdict(set)
+    for s in selectors:
+        sel_by_catalog[s["catalog"]] += 1
+        groups_by_catalog[s["catalog"]].update(s["groups"])
+
+    in_deg, out_deg = Counter(), Counter()
+    for e in edges:
+        out_deg[e["from"]] += 1
+        in_deg[e["to"]] += 1
+
+    # How often tests reach for each screen, via its `on.<accessor>` handle.
+    usage = Counter()
+    tests_src = ""
+    for f in sorted(os.listdir(tae_dir)):
+        if f.endswith(".kt"):
+            tests_src += open(
+                os.path.join(tae_dir, f), encoding="utf-8", errors="replace"
+            ).read()
+    for accessor, cls in accessors.items():
+        usage[cls] = len(re.findall(rf"\bon\.{re.escape(accessor)}\b", tests_src))
+
+    heatmap = []
+    for p in pages:
+        cat = p["catalog"]
+        heatmap.append({
+            "page": p["name"],
+            "catalog": cat,
+            "selectors": sel_by_catalog.get(cat, 0),
+            "groups": len(groups_by_catalog.get(cat, ())),
+            "inbound": in_deg.get(p["name"], 0),
+            "outbound": out_deg.get(p["name"], 0),
+            "usage": usage.get(p["name"], 0),
+            "lines": p["lines"],
+        })
+    heatmap.sort(
+        key=lambda r: (r["usage"], r["selectors"], r["inbound"] + r["outbound"]),
+        reverse=True,
+    )
 
     strategy_family = {}
     for s in selectors:
@@ -336,11 +504,38 @@ def build(ui_root, repo_root):
     shared = sum(l["lines"] for l in layers if l["layer"] != "tests")
     test_lines = sum(l["lines"] for l in layers if l["layer"] == "tests")
 
+    # --- the legacy robot layer, the thing the page-object model replaces
+    robot_files = kt_files(os.path.join(ui_root, "robots"))
+    robot_lines = sum(
+        sum(1 for _ in open(p, encoding="utf-8", errors="replace")) for p in robot_files
+    )
+    po_sel_lines = sum(
+        l["lines"] for l in layers if l["layer"] in ("pageObjects", "selectors")
+    )
+
+    legacy_files = [
+        os.path.join(ui_root, f)
+        for f in sorted(os.listdir(ui_root))
+        if f.endswith(".kt") and os.path.isfile(os.path.join(ui_root, f))
+    ]
+    tae_files = kt_files(tae_dir)
+    legacy_leak, legacy_leak_files = count_toolkit_calls(legacy_files)
+    tae_leak, tae_leak_files = count_toolkit_calls(tae_files)
+    robot_leak, _ = count_toolkit_calls(robot_files)
+    shared_leak, _ = count_toolkit_calls(
+        kt_files(os.path.join(eff_root, "helpers"))
+        + kt_files(os.path.join(eff_root, "core"))
+    )
+
     live_tae = [t for t in tae_tests if not t["ignored"]]
-    conv_legacy_loc = [c["legacyLoc"] for c in conversions if c["legacyLoc"]]
-    # LOC of the TAE tests that actually replace a converted legacy test
+    legacy_smoke = [t for t in legacy_tests if t["smoke"]]
+    legacy_smoke_ignored = [t for t in legacy_smoke if t["ignored"]]
+    conv_legacy_loc = [c["legacyLoc"] for c in smoke_conversions if c["legacyLoc"]]
+    # LOC of the TAE tests that actually replace a converted legacy smoke test
     replacement_names = {
-        tgt["pointer"].rsplit(".", 1)[-1] for c in conversions for tgt in c["targets"]
+        tgt["pointer"].rsplit(".", 1)[-1]
+        for c in smoke_conversions
+        for tgt in c["targets"]
     }
     replacement_loc = [
         tae_index[n]["loc"]
@@ -366,11 +561,20 @@ def build(ui_root, repo_root):
             "taeIgnored": len(tae_tests) - len(live_tae),
             "taeSmoke": len([t for t in live_tae if t["smoke"]]),
             "taeClasses": len({t["class"] for t in tae_tests}),
+            # --- the conversion scope: the legacy @SmokeTest suite
+            "smokeTotal": len(legacy_smoke),
+            "smokeIgnored": len(legacy_smoke_ignored),
+            "smokeActive": len(legacy_smoke) - len(legacy_smoke_ignored),
+            "smokeConverted": len(smoke_conversions),
+            "smokeRemaining": len(legacy_smoke)
+            - len(legacy_smoke_ignored)
+            - len(smoke_conversions),
+            "smokeClasses": len({t["class"] for t in legacy_smoke}),
+            # --- whole legacy suite, for context only
             "legacyTests": len(legacy_tests),
             "legacyClasses": len({t["class"] for t in legacy_tests}),
-            "legacySmoke": len([t for t in legacy_tests if t["smoke"]]),
             "converted": len(conversions),
-            "convertedSmoke": len([c for c in conversions if c["smoke"]]),
+            "nonSmokeConverted": len(conversions) - len(smoke_conversions),
             "pages": len(pages),
             "selectors": len(selectors),
             "catalogs": len({s["catalog"] for s in selectors}),
@@ -383,10 +587,42 @@ def build(ui_root, repo_root):
             "avgConvertedLegacyLoc": avg(conv_legacy_loc),
             "avgReplacementLoc": avg(replacement_loc),
             "parameterizedSelectors": len([s for s in selectors if s["parameterized"]]),
+            "primitives": len(primitives),
+            "verbs": len([p for p in primitives if p["category"] != "Lifecycle"]),
+            # --- complexity against the robot pattern
+            "robotFiles": len(robot_files),
+            "robotLines": robot_lines,
+            "robotLinesPerScreen": round(robot_lines / len(robot_files), 1)
+            if robot_files
+            else 0,
+            "pageModelLines": po_sel_lines,
+            "pageModelLinesPerScreen": round(po_sel_lines / len(pages), 1)
+            if pages
+            else 0,
+            "legacyToolkitCalls": legacy_leak,
+            "legacyToolkitFiles": legacy_leak_files,
+            "taeToolkitCalls": tae_leak,
+            "taeToolkitFiles": tae_leak_files,
+            "legacyTestFiles": len(legacy_files),
+            "taeTestFiles": len(tae_files),
+            "robotToolkitCalls": robot_leak,
+            "sharedToolkitCalls": shared_leak,
+            "selectorGroupsTotal": len({g for s in selectors for g in s["groups"]}),
+            "pagesWithNoSelectors": len([h for h in heatmap if h["selectors"] == 0]),
+            "pagesUnusedByTests": len([h for h in heatmap if h["usage"] == 0]),
             "unresolvedPointers": len(bad_pointers),
             "totalPointers": len([t for c in conversions for t in c["targets"]]),
         },
         "badPointers": bad_pointers,
+        "primitives": sorted(primitives, key=lambda p: (p["category"], p["name"])),
+        "primitiveCategories": [
+            {"category": k, "count": v}
+            for k, v in sorted(
+                Counter(p["category"] for p in primitives).items(),
+                key=lambda kv: -kv[1],
+            )
+        ],
+        "heatmap": heatmap,
         "timeline": timeline,
         "conversions": sorted(
             conversions, key=lambda c: (c["since"], c["legacy"]), reverse=True
